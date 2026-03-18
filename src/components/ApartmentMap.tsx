@@ -7,7 +7,7 @@ import { formatPrice } from '@/lib/utils';
 import { geocodeAddress } from '@/lib/geocode';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Maximize } from 'lucide-react';
+import { Maximize, Train } from 'lucide-react';
 
 interface ApartmentMapProps {
   allApartments: Apartment[];
@@ -25,9 +25,11 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const transportLayerRef = useRef<L.TileLayer | null>(null);
   const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds, setMobileTab } = useStore();
   const [isMobile, setIsMobile] = useState(false);
   const [isMapVisible, setIsMapVisible] = useState(false);
+  const [showTransport, setShowTransport] = useState(false);
 
   // Check if mobile based on screen width
   useEffect(() => {
@@ -77,6 +79,13 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(map);
+
+      // Create transport layer (but don't add it yet)
+      transportLayerRef.current = L.tileLayer('https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://memomaps.de/">MeMoMaps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+        opacity: 0.6,
+      });
 
       mapRef.current = map;
 
@@ -281,6 +290,20 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
     }
   }, [selectedApartmentId, geoAllApartments]);
 
+  // Toggle transport layer
+  const toggleTransport = useCallback(() => {
+    const map = mapRef.current;
+    const layer = transportLayerRef.current;
+    if (!map || !layer) return;
+
+    if (showTransport) {
+      map.removeLayer(layer);
+    } else {
+      layer.addTo(map);
+    }
+    setShowTransport(!showTransport);
+  }, [showTransport]);
+
   // Zoom to fit all visible (non-filtered) apartments
   const handleZoomToFit = useCallback(() => {
     const map = mapRef.current;
@@ -303,15 +326,29 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
     <div className="relative h-full w-full rounded-xl overflow-hidden border border-border">
       <div ref={containerRef} className="h-full w-full" />
 
-      {/* Zoom-to-fit button */}
-      <button
-        onClick={handleZoomToFit}
-        className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-medium text-foreground shadow-md border border-border hover:bg-muted transition-colors"
-        title="Zoom to fit all apartments"
-      >
-        <Maximize className="h-3.5 w-3.5" />
-        Fit All
-      </button>
+      {/* Control buttons */}
+      <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
+        <button
+          onClick={handleZoomToFit}
+          className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-medium text-foreground shadow-md border border-border hover:bg-muted transition-colors"
+          title="Zoom to fit all apartments"
+        >
+          <Maximize className="h-3.5 w-3.5" />
+          Fit All
+        </button>
+        <button
+          onClick={toggleTransport}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium shadow-md border transition-colors ${
+            showTransport
+              ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600'
+              : 'bg-white text-foreground border-border hover:bg-muted'
+          }`}
+          title="Toggle public transport (Tram, S-Bahn, Bus)"
+        >
+          <Train className="h-3.5 w-3.5" />
+          Transport
+        </button>
+      </div>
 
       {geoAllApartments.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80">
