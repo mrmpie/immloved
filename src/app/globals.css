@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: #ffffff;
+  --color-foreground: #1a1a2e;
+  --color-primary: #e63946;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #457b9d;
+  --color-secondary-foreground: #ffffff;
+  --color-accent: #f4a261;
+  --color-accent-foreground: #1a1a2e;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-border: #e2e8f0;
+  --color-card: #ffffff;
+  --color-card-foreground: #1a1a2e;
+  --color-destructive: #dc2626;
+  --color-ring: #e63946;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Leaflet fixes */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.price-marker {
+  background: #e63946;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  border: 2px solid white;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.price-marker.selected {
+  background: #457b9d;
+  transform: scale(1.15);
+}
+
+.price-marker.user1 {
+  border-color: #f472b6;
+}
+
+.price-marker.user2 {
+  border-color: #60a5fa;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
