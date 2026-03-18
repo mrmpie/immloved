@@ -13,11 +13,13 @@ export async function geocodeAddress(
       }
     );
     const data = await res.json();
-    if (data && data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-      };
+    if (data && data.length > 0 && data[0].lat && data[0].lon) {
+      const lat = parseFloat(data[0].lat);
+      const lng = parseFloat(data[0].lon);
+      // Validate that we got valid numbers
+      if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
+        return { lat, lng };
+      }
     }
     return null;
   } catch {

@@ -16,39 +16,87 @@ interface ApartmentMapProps {
 // Leipzig center coordinates
 const LEIPZIG_CENTER: [number, number] = [51.3397, 12.3731];
 
+// Utility function to validate coordinates
+function isValidCoordinate(lat: number | null | undefined, lng: number | null | undefined): boolean {
+  return lat != null && lng != null && !isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng);
+}
+
 export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds } = useStore();
 
+  // Safety check: filter out any apartments with invalid coordinates at the component level
+  const safeApartments = useMemo(() => {
+    return allApartments.filter(apt => {
+      const isValid = isValidCoordinate(apt.latitude, apt.longitude);
+      if (!isValid && apt.address) {
+        console.warn(`Apartment ${apt.id} has invalid coordinates, filtering out`);
+      }
+      return isValid;
+    });
+  }, [allApartments]);
+
   // Initialize map
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    const initializeMap = () => {
+      if (!containerRef.current || mapRef.current) return;
 
-    const map = L.map(containerRef.current, {
-      center: LEIPZIG_CENTER,
-      zoom: 12,
-      zoomControl: true,
+      // Check if container has valid dimensions
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        console.warn('Map container has zero dimensions, delaying initialization');
+        // Try again after a delay
+        const timer = setTimeout(() => {
+          initializeMap();
+        }, 500);
+        return;
+      }
+
+      const map = L.map(containerRef.current, {
+        center: LEIPZIG_CENTER,
+        zoom: 12,
+        zoomControl: true,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      mapRef.current = map;
+
+      return () => {
+        map.remove();
+        mapRef.current = null;
+      };
+    };
+
+    initializeMap();
+
+    // Add resize observer to handle mobile layout changes
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        setTimeout(() => {
+          mapRef.current?.invalidateSize();
+        }, 100);
+      }
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
-
-    mapRef.current = map;
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
 
     return () => {
-      map.remove();
-      mapRef.current = null;
+      resizeObserver.disconnect();
     };
   }, []);
 
   // Geocode apartments missing coordinates
   useEffect(() => {
     const toGeocode = allApartments.filter(
-      (a) => a.address && a.latitude == null && a.longitude == null
+      (a) => a.address && !isValidCoordinate(a.latitude, a.longitude)
     );
     if (toGeocode.length === 0) return;
 
@@ -72,10 +120,9 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   }, [allApartments.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // All apartments with valid coordinates (for showing grayed-out ones)
-  const geoAllApartments = useMemo(
-    () => allApartments.filter((a) => a.latitude != null && a.longitude != null),
-    [allApartments]
-  );
+  const geoAllApartments = useMemo(() => {
+    return safeApartments; // safeApartments already contains only valid coordinates
+  }, [safeApartments]);
 
   // Scroll list to apartment card on marker click
   const scrollToApartment = useCallback((id: string) => {
@@ -117,32 +164,68 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
         iconAnchor: [40, 14],
       });
 
-      const marker = L.marker([apt.latitude!, apt.longitude!], { icon }).addTo(map);
+      // Additional safety check before creating marker
+      if (isValidCoordinate(apt.latitude, apt.longitude)) {
+        const marker = L.marker([apt.latitude!, apt.longitude!], { icon }).addTo(map);
 
-      marker.on('click', () => {
-        setSelectedApartment(apt.id);
-        scrollToApartment(apt.id);
-      });
-
-      // Tooltip with title
-      if (apt.title) {
-        marker.bindTooltip(apt.title, {
-          direction: 'top',
-          offset: [0, -16],
+        marker.on('click', () => {
+          setSelectedApartment(apt.id);
+          scrollToApartment(apt.id);
         });
-      }
 
-      markersRef.current.push(marker);
+        // Tooltip with title
+        if (apt.title) {
+          marker.bindTooltip(apt.title, {
+            direction: 'top',
+            offset: [0, -16],
+          });
+        }
+
+        markersRef.current.push(marker);
+      }
     });
   }, [geoAllApartments, selectedApartmentId, setSelectedApartment, filteredIds, scrollToApartment]);
 
   // Pan to selected apartment
   useEffect(() => {
     if (!mapRef.current || !selectedApartmentId) return;
+    
     const apt = geoAllApartments.find((a) => a.id === selectedApartmentId);
-    if (apt && apt.latitude != null && apt.longitude != null) {
-      mapRef.current.flyTo([apt.latitude, apt.longitude], 15, {
-        duration: 0.5,
+    console.log('Selected apartment for flyTo:', { 
+      selectedApartmentId, 
+      apt: apt ? { 
+        id: apt.id, 
+        title: apt.title, 
+        latitude: apt.latitude, 
+        longitude: apt.longitude 
+      } : null,
+      isValid: apt ? isValidCoordinate(apt.latitude, apt.longitude) : false,
+      mapReady: mapRef.current ? true : false
+    });
+    
+    if (apt && isValidCoordinate(apt.latitude, apt.longitude)) {
+      // Add a small delay to ensure map is ready, especially on mobile
+      const flyToApartment = () => {
+        if (!mapRef.current) return;
+        
+        try {
+          mapRef.current.flyTo([apt.latitude!, apt.longitude!], 15, {
+            duration: 0.5,
+          });
+        } catch (error) {
+          console.error('Error flying to apartment:', error);
+          // Fallback to setView if flyTo fails
+          try {
+            mapRef.current.setView([apt.latitude!, apt.longitude!], 15);
+          } catch (fallbackError) {
+            console.error('Error with setView fallback:', fallbackError);
+          }
+        }
+      };
+      
+      // Use requestAnimationFrame to ensure the map is rendered
+      requestAnimationFrame(() => {
+        setTimeout(flyToApartment, 100); // Small delay for mobile
       });
     }
   }, [selectedApartmentId, geoAllApartments]);
@@ -155,8 +238,12 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
       (a) => filteredIds == null || filteredIds.has(a.id)
     );
     if (visibleApts.length === 0) return;
+    const validCoords = visibleApts.filter(
+      (a) => isValidCoordinate(a.latitude, a.longitude)
+    );
+    if (validCoords.length === 0) return;
     const bounds = L.latLngBounds(
-      visibleApts.map((a) => [a.latitude!, a.longitude!] as [number, number])
+      validCoords.map((a) => [a.latitude!, a.longitude!] as [number, number])
     );
     map.fitBounds(bounds.pad(0.1));
   }, [geoAllApartments, filteredIds]);
