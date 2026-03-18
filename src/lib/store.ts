@@ -147,8 +147,12 @@ export const useStore = create<AppState>((set, get) => ({
         .update(updates)
         .eq('id', id);
       if (!error) {
-        await get().fetchApartments();
-        await get().fetchRemovedApartments();
+        // Update locally without refetching to preserve scroll position
+        set((state) => ({
+          apartments: state.apartments.map((a) =>
+            a.id === id ? { ...a, ...updates, updated_at: new Date().toISOString() } : a
+          ),
+        }));
       }
     } else {
       const all = loadFromLocalStorage();
@@ -161,18 +165,64 @@ export const useStore = create<AppState>((set, get) => ({
           all[idx].price_per_m2 = p && a ? Math.round(p / a) : null;
         }
         saveToLocalStorage(all);
-        await get().fetchApartments();
-        await get().fetchRemovedApartments();
+        // Update locally without refetching to preserve scroll position
+        set((state) => ({
+          apartments: state.apartments.map((a) =>
+            a.id === id ? { ...a, ...updates, updated_at: new Date().toISOString() } : a
+          ),
+        }));
       }
     }
   },
 
   removeApartment: async (id) => {
-    await get().updateApartment(id, { is_removed: true, is_favorite: false });
+    const updates = { is_removed: true, is_favorite: false };
+    if (isSupabaseConfigured() && supabase) {
+      const { error } = await supabase
+        .from('apartments')
+        .update(updates)
+        .eq('id', id);
+      if (!error) {
+        // Remove from local state without refetching
+        set((state) => ({
+          apartments: state.apartments.filter((a) => a.id !== id),
+        }));
+      }
+    } else {
+      const all = loadFromLocalStorage();
+      const idx = all.findIndex((a) => a.id === id);
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() };
+        saveToLocalStorage(all);
+        set((state) => ({
+          apartments: state.apartments.filter((a) => a.id !== id),
+        }));
+      }
+    }
   },
 
   restoreApartment: async (id) => {
-    await get().updateApartment(id, { is_removed: false, is_favorite: true });
+    const updates = { is_removed: false, is_favorite: true };
+    if (isSupabaseConfigured() && supabase) {
+      const { error } = await supabase
+        .from('apartments')
+        .update(updates)
+        .eq('id', id);
+      if (!error) {
+        // Refetch to get the restored apartment
+        await get().fetchApartments();
+        await get().fetchRemovedApartments();
+      }
+    } else {
+      const all = loadFromLocalStorage();
+      const idx = all.findIndex((a) => a.id === id);
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() };
+        saveToLocalStorage(all);
+        await get().fetchApartments();
+        await get().fetchRemovedApartments();
+      }
+    }
   },
 
   importApartments: async (apartments) => {

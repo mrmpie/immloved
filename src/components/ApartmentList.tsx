@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Apartment, FilterState } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import ApartmentCard from './ApartmentCard';
@@ -78,8 +78,6 @@ function applyFilters(apartments: Apartment[], filters: FilterState): Apartment[
 
 export default function ApartmentList({ apartments, showRestore = false }: ApartmentListProps) {
   const { filters, selectedApartmentId, setSelectedApartment, setFilteredIds } = useStore();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef<number>(0);
 
   const filtered = useMemo(
     () => applyFilters(apartments, filters),
@@ -92,22 +90,6 @@ export default function ApartmentList({ apartments, showRestore = false }: Apart
     setFilteredIds(ids);
     return () => setFilteredIds(null);
   }, [filtered, setFilteredIds]);
-
-  // Save scroll position before apartments change
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      scrollPositionRef.current = container.scrollTop;
-    }
-  }, [apartments]);
-
-  // Restore scroll position after apartments change
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (container && scrollPositionRef.current > 0) {
-      container.scrollTop = scrollPositionRef.current;
-    }
-  }, [filtered]);
 
   if (filtered.length === 0) {
     return (
@@ -124,7 +106,7 @@ export default function ApartmentList({ apartments, showRestore = false }: Apart
   }
 
   return (
-    <div ref={scrollContainerRef} className="space-y-3">
+    <div className="space-y-3">
       <div className="text-xs text-muted-foreground px-1">
         Showing {filtered.length} of {apartments.length} apartments
       </div>
