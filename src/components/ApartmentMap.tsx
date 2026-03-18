@@ -195,8 +195,8 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
         });
 
         // Tooltip with title
-        if (apt.title) {
-          marker.bindTooltip(apt.title, {
+        if (apt.title_en || apt.title) {
+          marker.bindTooltip(apt.title_en || apt.title || '', {
             direction: 'top',
             offset: [0, -16],
           });

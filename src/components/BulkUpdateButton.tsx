@@ -5,6 +5,7 @@ import { useStore } from '@/lib/store';
 import { geocodeAddress } from '@/lib/geocode';
 import { RefreshCw } from 'lucide-react';
 import { Apartment } from '@/lib/types';
+import { translateText, TRANSLATABLE_FIELDS } from '@/lib/translate';
 
 /** A field is "empty" if null, undefined, or blank string */
 function isEmpty(val: unknown): boolean {
@@ -154,8 +155,62 @@ export default function BulkUpdateButton() {
       await new Promise((r) => setTimeout(r, 1500));
     }
 
+    // --- Phase 2: Translate German → English for all apartments that need it ---
+    const freshApartments = useStore.getState().apartments;
+    const toTranslate = freshApartments.filter((a) => {
+      if (a.is_removed) return false;
+      for (const [src, tgt] of TRANSLATABLE_FIELDS) {
+        const srcVal = a[src as keyof Apartment];
+        const tgtVal = a[tgt as keyof Apartment];
+        if (srcVal && (typeof srcVal === 'string') && srcVal.trim() !== '' &&
+            (tgtVal == null || (typeof tgtVal === 'string' && tgtVal.trim() === ''))) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (toTranslate.length > 0) {
+      setProgress(`Translating ${toTranslate.length} apartments DE → EN...`);
+      let tCount = 0;
+
+      for (let i = 0; i < toTranslate.length; i++) {
+        const apt = toTranslate[i];
+        setCurrent(i + 1);
+        setTotal(toTranslate.length);
+        setProgress(`Translating ${i + 1}/${toTranslate.length}: ${apt.title || apt.immoscout_id}...`);
+
+        const tUpdates: Partial<Apartment> = {};
+        let anyDone = false;
+
+        for (const [src, tgt] of TRANSLATABLE_FIELDS) {
+          const srcVal = apt[src as keyof Apartment] as string | null;
+          const tgtVal = apt[tgt as keyof Apartment] as string | null;
+          if (srcVal && srcVal.trim() !== '' &&
+              (tgtVal == null || tgtVal.trim() === '')) {
+            try {
+              const result = await translateText(srcVal);
+              if (result) {
+                (tUpdates as Record<string, string>)[tgt] = result;
+                anyDone = true;
+              }
+            } catch { /* skip */ }
+            await new Promise((r) => setTimeout(r, 500));
+          }
+        }
+
+        if (anyDone && Object.keys(tUpdates).length > 0) {
+          await updateApartment(apt.id, tUpdates);
+          tCount++;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
+      updated += tCount;
+    }
+
     setRunning(false);
-    const msg = `Done! Updated: ${updated}, Skipped: ${skipped}${unavailable > 0 ? `, Unavailable: ${unavailable}` : ''}`;
+    const msg = `Done! Updated: ${updated}, Skipped: ${skipped}${unavailable > 0 ? `, Unavailable: ${unavailable}` : ''}${toTranslate.length > 0 ? `, Translated: ${toTranslate.length}` : ''}`;
     setProgress(msg);
     setTimeout(() => setProgress(''), 8000);
   };

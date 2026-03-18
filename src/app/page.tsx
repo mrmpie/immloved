@@ -6,6 +6,7 @@ import { useStore } from '@/lib/store';
 import FilterBar from '@/components/FilterBar';
 import ApartmentList from '@/components/ApartmentList';
 import AddApartmentDialog from '@/components/AddApartmentDialog';
+import TranslateButton from '@/components/TranslateButton';
 import { Map, List, ChevronDown, ChevronUp } from 'lucide-react';
 
 const ApartmentMap = dynamic(() => import('@/components/ApartmentMap'), {
@@ -96,7 +97,8 @@ export default function FavoritesPage() {
                   <FilterBar />
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <TranslateButton />
                 <AddApartmentDialog />
               </div>
             </div>

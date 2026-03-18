@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useStore } from '@/lib/store';
 import { parseVisitadosSheet } from '@/lib/excel-import';
 import BulkUpdateButton from '@/components/BulkUpdateButton';
+import TranslateButton from '@/components/TranslateButton';
 import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function ImportPage() {
@@ -66,7 +67,10 @@ export default function ImportPage() {
         <p className="text-sm text-muted-foreground mb-3">
           {apartments.length} apartments in favorites
         </p>
-        <BulkUpdateButton />
+        <div className="flex flex-wrap items-center gap-2">
+          <BulkUpdateButton />
+          <TranslateButton />
+        </div>
       </div>
 
       {/* File upload */}

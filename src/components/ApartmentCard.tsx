@@ -183,7 +183,7 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
           {/* Info */}
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold leading-tight line-clamp-2">
-              {apt.title || apt.title_en || 'Untitled'}
+              {apt.title_en || apt.title || 'Untitled'}
             </h3>
 
             {/* Address */}
@@ -344,13 +344,13 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
 
             {/* Editable info grid */}
             <div className="grid grid-cols-2 gap-1.5">
-              <EditableDetail field="title" label="Title" value={apt.title} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="title" label="Title" value={apt.title_en || apt.title} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="price" label="Price (€)" value={apt.price} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
               <EditableDetail field="area" label="Area (m²)" value={apt.area} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
               <EditableDetail field="rooms" label="Rooms" value={apt.rooms} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
               <EditableDetail field="type" label="Type" value={apt.type} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="year_built" label="Year" value={apt.year_built} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="condition" label="Condition" value={apt.condition} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="condition" label="Condition" value={apt.condition_en || apt.condition} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="floor" label="Floor" value={apt.floor} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="heating" label="Heating" value={apt.heating} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="elevator" label="Elevator" value={apt.elevator} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
@@ -363,7 +363,7 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
             </div>
 
             {/* Editable description */}
-            <EditableTextArea field="description" label="Description" value={apt.description} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+            <EditableTextArea field="description" label="Description" value={apt.description_en || apt.description} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
 
             {/* Editable pros & cons */}
             <EditableTextArea field="pros" label="✅ Pros" value={apt.pros} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} color="green" />
