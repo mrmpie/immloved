@@ -4,6 +4,7 @@ import { useState, forwardRef } from 'react';
 import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { formatPrice, formatPricePerM2, truncate } from '@/lib/utils';
+import PhotoViewer from './PhotoViewer';
 import {
   Heart,
   MapPin,
@@ -47,6 +48,8 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [editingVisitDate, setEditingVisitDate] = useState<'user1' | 'user2' | null>(null);
   const [visitDateValue, setVisitDateValue] = useState('');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const apt = apartment;
 
@@ -300,7 +303,13 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
                 </div>
                 
                 <div className="relative">
-                  <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                  <div 
+                    className="aspect-video w-full overflow-hidden rounded-lg bg-muted cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      setViewerIndex(galleryIndex);
+                      setViewerOpen(true);
+                    }}
+                  >
                     <img
                       src={proxiedImages[galleryIndex]}
                       alt={`Photo ${galleryIndex + 1}`}
@@ -334,6 +343,10 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
                         <button
                           key={i}
                           onClick={() => setGalleryIndex(i)}
+                          onDoubleClick={() => {
+                            setViewerIndex(i);
+                            setViewerOpen(true);
+                          }}
                           className={`h-10 w-14 shrink-0 overflow-hidden rounded border-2 ${
                             i === galleryIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
                           }`}
@@ -588,6 +601,15 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
           </div>
         )}
       </div>
+
+      {/* Photo Viewer Modal */}
+      {viewerOpen && (
+        <PhotoViewer
+          images={proxiedImages}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
     </div>
   );
 });
