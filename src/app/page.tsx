@@ -6,7 +6,7 @@ import { useStore } from '@/lib/store';
 import FilterBar from '@/components/FilterBar';
 import ApartmentList from '@/components/ApartmentList';
 import AddApartmentDialog from '@/components/AddApartmentDialog';
-import { Map, List } from 'lucide-react';
+import { Map, List, ChevronDown, ChevronUp } from 'lucide-react';
 
 const ApartmentMap = dynamic(() => import('@/components/ApartmentMap'), {
   ssr: false,
@@ -20,6 +20,7 @@ const ApartmentMap = dynamic(() => import('@/components/ApartmentMap'), {
 export default function FavoritesPage() {
   const { apartments, fetchApartments, loading, mobileTab, setMobileTab } = useStore();
   const [hydrated, setHydrated] = useState(false);
+  const [filterBarExpanded, setFilterBarExpanded] = useState(true);
 
   useEffect(() => {
     setHydrated(true);
@@ -67,11 +68,39 @@ export default function FavoritesPage() {
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* Filter bar */}
       <div className="border-b border-border bg-white px-4 py-3">
-        <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-          <div className="flex-1">
-            <FilterBar />
+        <div className="mx-auto max-w-screen-2xl">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => setFilterBarExpanded(!filterBarExpanded)}
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+              title={filterBarExpanded ? 'Collapse filters' : 'Expand filters'}
+            >
+              {filterBarExpanded ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  <span className="text-sm">Collapse</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  <span className="text-sm">Expand</span>
+                </>
+              )}
+            </button>
           </div>
-          <AddApartmentDialog />
+          
+          {filterBarExpanded && (
+            <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <FilterBar />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <AddApartmentDialog />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

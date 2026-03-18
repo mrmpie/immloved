@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useStore } from '@/lib/store';
 import { parseVisitadosSheet } from '@/lib/excel-import';
+import BulkUpdateButton from '@/components/BulkUpdateButton';
 import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function ImportPage() {
@@ -62,9 +63,10 @@ export default function ImportPage() {
       {/* Current status */}
       <div className="mb-6 rounded-xl border border-border bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold mb-2">Current Database</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mb-3">
           {apartments.length} apartments in favorites
         </p>
+        <BulkUpdateButton />
       </div>
 
       {/* File upload */}

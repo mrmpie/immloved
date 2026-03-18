@@ -36,6 +36,8 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   function ApartmentCard({ apartment, isSelected, onSelect, showRestore = false }, ref) {
   const { updateApartment, removeApartment, restoreApartment, userName1, userName2 } = useStore();
   const [expanded, setExpanded] = useState(false);
+  const [linksExpanded, setLinksExpanded] = useState(false);
+  const [imageUrlsExpanded, setImageUrlsExpanded] = useState(false);
   const [editingComment, setEditingComment] = useState<'user1' | 'user2' | null>(null);
   const [commentText, setCommentText] = useState('');
   const [editingAddress, setEditingAddress] = useState(false);
@@ -284,50 +286,59 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
 
             {/* Photo gallery */}
             {proxiedImages.length > 0 && (
-              <div className="relative">
-                <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                  <img
-                    src={proxiedImages[galleryIndex]}
-                    alt={`Photo ${galleryIndex + 1}`}
-                    className="h-full w-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).src = ''; }}
-                  />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Photos ({proxiedImages.length})
+                  </span>
                 </div>
-                {proxiedImages.length > 1 && (
-                  <>
-                    <button
-                      onClick={() => setGalleryIndex((i) => (i - 1 + proxiedImages.length) % proxiedImages.length)}
-                      className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setGalleryIndex((i) => (i + 1) % proxiedImages.length)}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white">
-                      {galleryIndex + 1} / {proxiedImages.length}
-                    </div>
-                  </>
-                )}
-                {/* Thumbnail strip */}
-                {proxiedImages.length > 1 && (
-                  <div className="mt-1.5 flex gap-1 overflow-x-auto pb-1">
-                    {proxiedImages.map((url, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setGalleryIndex(i)}
-                        className={`h-10 w-14 shrink-0 overflow-hidden rounded border-2 ${
-                          i === galleryIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
-                        }`}
-                      >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
+                
+                <div className="relative">
+                  <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                    <img
+                      src={proxiedImages[galleryIndex]}
+                      alt={`Photo ${galleryIndex + 1}`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = ''; }}
+                    />
                   </div>
-                )}
+                  {proxiedImages.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setGalleryIndex((i) => (i - 1 + proxiedImages.length) % proxiedImages.length)}
+                        className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setGalleryIndex((i) => (i + 1) % proxiedImages.length)}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white">
+                        {galleryIndex + 1} / {proxiedImages.length}
+                      </div>
+                    </>
+                  )}
+                  {/* Thumbnail strip */}
+                  {proxiedImages.length > 1 && (
+                    <div className="mt-1.5 flex gap-1 overflow-x-auto pb-1">
+                      {proxiedImages.map((url, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setGalleryIndex(i)}
+                          className={`h-10 w-14 shrink-0 overflow-hidden rounded border-2 ${
+                            i === galleryIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={url} alt="" className="h-full w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -359,8 +370,28 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
             <EditableTextArea field="cons" label="❌ Cons" value={apt.cons} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} color="red" />
 
             {/* Editable image URLs */}
-            <EditableTextArea field="thumbnail_url" label="Thumbnail URL" value={apt.thumbnail_url} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-            <EditableTextArea field="other_urls" label="Other Image URLs (JSON array or comma-separated)" value={apt.other_urls} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  Image URLs
+                </span>
+                <button
+                  onClick={() => setImageUrlsExpanded(!imageUrlsExpanded)}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted"
+                  title={imageUrlsExpanded ? 'Hide image URLs' : 'Show image URLs'}
+                >
+                  {imageUrlsExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              
+              {imageUrlsExpanded && (
+                <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                  <EditableTextArea field="thumbnail_url" label="Thumbnail URL" value={apt.thumbnail_url} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+                  <EditableTextArea field="other_urls" label="Other Image URLs (JSON array or comma-separated)" value={apt.other_urls} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+                </div>
+              )}
+            </div>
 
             {/* User actions */}
             <div className="flex flex-wrap gap-2">
@@ -497,32 +528,53 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
               </div>
             )}
 
-            {/* Bottom actions */}
-            <div className="flex items-center gap-2 pt-1">
-              {apt.url && (
-                <a href={apt.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded bg-secondary/10 px-2 py-1 text-[10px] font-medium text-secondary hover:bg-secondary/20">
-                  <ExternalLink className="h-3 w-3" />View on ImmoScout24
-                </a>
-              )}
-              {showRestore ? (
-                <button onClick={() => restoreApartment(apt.id)} className="flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-200">
-                  <Heart className="h-3 w-3" />Restore to Favorites
+            {/* Links and actions */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Links & Actions
+                </span>
+                <button
+                  onClick={() => setLinksExpanded(!linksExpanded)}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted"
+                  title={linksExpanded ? 'Hide links' : 'Show links'}
+                >
+                  {linksExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                 </button>
-              ) : (
-                <button onClick={() => removeApartment(apt.id)} className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-[10px] font-medium text-red-500 hover:bg-red-100">
-                  <Trash2 className="h-3 w-3" />Remove
-                </button>
+              </div>
+              
+              {linksExpanded && (
+                <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                  {/* Bottom actions */}
+                  <div className="flex items-center gap-2 pt-1">
+                    {apt.url && (
+                      <a href={apt.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded bg-secondary/10 px-2 py-1 text-[10px] font-medium text-secondary hover:bg-secondary/20">
+                        <ExternalLink className="h-3 w-3" />View on ImmoScout24
+                      </a>
+                    )}
+                    {showRestore ? (
+                      <button onClick={() => restoreApartment(apt.id)} className="flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-200">
+                        <Heart className="h-3 w-3" />Restore to Favorites
+                      </button>
+                    ) : (
+                      <button onClick={() => removeApartment(apt.id)} className="flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-[10px] font-medium text-red-500 hover:bg-red-100">
+                        <Trash2 className="h-3 w-3" />Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Contact */}
+                  {apt.contact_name && (
+                    <div className="text-[10px] text-muted-foreground">
+                      <span className="font-medium">Contact:</span> {apt.contact_name}
+                      {apt.contact_company && ` – ${apt.contact_company}`}
+                      {apt.contact_phone && ` | ${apt.contact_phone}`}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-
-            {/* Contact */}
-            {apt.contact_name && (
-              <div className="text-[10px] text-muted-foreground">
-                <span className="font-medium">Contact:</span> {apt.contact_name}
-                {apt.contact_company && ` – ${apt.contact_company}`}
-                {apt.contact_phone && ` | ${apt.contact_phone}`}
-              </div>
-            )}
           </div>
         )}
       </div>
