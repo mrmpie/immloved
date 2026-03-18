@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { formatPrice } from '@/lib/utils';
@@ -25,7 +25,19 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
-  const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds } = useStore();
+  const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds, setMobileTab } = useStore();
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile based on screen width
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Safety check: filter out any apartments with invalid coordinates at the component level
   const safeApartments = useMemo(() => {
@@ -170,7 +182,16 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
         marker.on('click', () => {
           setSelectedApartment(apt.id);
-          scrollToApartment(apt.id);
+          // On mobile, switch to list tab after selecting apartment
+          if (isMobile) {
+            setMobileTab('list');
+            // Scroll to apartment after switching tabs (with delay for tab transition)
+            setTimeout(() => {
+              scrollToApartment(apt.id);
+            }, 300);
+          } else {
+            scrollToApartment(apt.id);
+          }
         });
 
         // Tooltip with title
@@ -204,19 +225,32 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
     });
     
     if (apt && isValidCoordinate(apt.latitude, apt.longitude)) {
+      // Capture coordinates immediately to avoid closure issues
+      const targetLat = apt.latitude!;
+      const targetLng = apt.longitude!;
+      const aptId = apt.id;
+      
       // Add a small delay to ensure map is ready, especially on mobile
       const flyToApartment = () => {
         if (!mapRef.current) return;
         
+        // Double-check coordinates are still valid
+        if (!isValidCoordinate(targetLat, targetLng)) {
+          console.warn(`Invalid coordinates for apartment ${aptId}:`, { targetLat, targetLng });
+          return;
+        }
+        
+        console.log(`Flying to apartment ${aptId} at [${targetLat}, ${targetLng}]`);
+        
         try {
-          mapRef.current.flyTo([apt.latitude!, apt.longitude!], 15, {
+          mapRef.current.flyTo([targetLat, targetLng], 15, {
             duration: 0.5,
           });
         } catch (error) {
           console.error('Error flying to apartment:', error);
           // Fallback to setView if flyTo fails
           try {
-            mapRef.current.setView([apt.latitude!, apt.longitude!], 15);
+            mapRef.current.setView([targetLat, targetLng], 15);
           } catch (fallbackError) {
             console.error('Error with setView fallback:', fallbackError);
           }
