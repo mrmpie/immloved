@@ -1,25 +1,26 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { formatPrice } from '@/lib/utils';
 import { geocodeAddress } from '@/lib/geocode';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Maximize } from 'lucide-react';
 
 interface ApartmentMapProps {
-  apartments: Apartment[];
+  allApartments: Apartment[];
 }
 
 // Leipzig center coordinates
 const LEIPZIG_CENTER: [number, number] = [51.3397, 12.3731];
 
-export default function ApartmentMap({ apartments }: ApartmentMapProps) {
+export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
-  const { selectedApartmentId, setSelectedApartment, updateApartment } = useStore();
+  const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds } = useStore();
 
   // Initialize map
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
 
   // Geocode apartments missing coordinates
   useEffect(() => {
-    const toGeocode = apartments.filter(
+    const toGeocode = allApartments.filter(
       (a) => a.address && a.latitude == null && a.longitude == null
     );
     if (toGeocode.length === 0) return;
@@ -68,13 +69,21 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
     };
     doGeocode();
     return () => { cancelled = true; };
-  }, [apartments.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allApartments.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apartments with valid coordinates
-  const geoApartments = useMemo(
-    () => apartments.filter((a) => a.latitude != null && a.longitude != null),
-    [apartments]
+  // All apartments with valid coordinates (for showing grayed-out ones)
+  const geoAllApartments = useMemo(
+    () => allApartments.filter((a) => a.latitude != null && a.longitude != null),
+    [allApartments]
   );
+
+  // Scroll list to apartment card on marker click
+  const scrollToApartment = useCallback((id: string) => {
+    const card = document.querySelector(`[data-apartment-id="${id}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
 
   // Update markers when apartments or selection changes
   useEffect(() => {
@@ -85,29 +94,34 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    geoApartments.forEach((apt) => {
+    geoAllApartments.forEach((apt) => {
       const isSelected = apt.id === selectedApartmentId;
+      const isFiltered = filteredIds != null && !filteredIds.has(apt.id);
       const userClass = apt.user1_favorite
         ? 'user1'
         : apt.user2_favorite
         ? 'user2'
         : '';
 
+      const classes = [
+        'price-marker',
+        isSelected ? 'selected' : '',
+        isFiltered ? 'filtered-out' : '',
+        !isFiltered ? userClass : '',
+      ].filter(Boolean).join(' ');
+
       const icon = L.divIcon({
         className: '',
-        html: `<div class="price-marker ${isSelected ? 'selected' : ''} ${userClass}">
-          ${formatPrice(apt.price)}
-        </div>`,
+        html: `<div class="${classes}">${formatPrice(apt.price)}</div>`,
         iconSize: [80, 28],
         iconAnchor: [40, 14],
       });
 
-      const marker = L.marker([apt.latitude!, apt.longitude!], { icon }).addTo(
-        map
-      );
+      const marker = L.marker([apt.latitude!, apt.longitude!], { icon }).addTo(map);
 
       marker.on('click', () => {
         setSelectedApartment(apt.id);
+        scrollToApartment(apt.id);
       });
 
       // Tooltip with title
@@ -120,29 +134,48 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
 
       markersRef.current.push(marker);
     });
-
-    // Fit bounds if we have markers
-    if (geoApartments.length > 0) {
-      const group = L.featureGroup(markersRef.current);
-      map.fitBounds(group.getBounds().pad(0.1));
-    }
-  }, [geoApartments, selectedApartmentId, setSelectedApartment]);
+  }, [geoAllApartments, selectedApartmentId, setSelectedApartment, filteredIds, scrollToApartment]);
 
   // Pan to selected apartment
   useEffect(() => {
     if (!mapRef.current || !selectedApartmentId) return;
-    const apt = geoApartments.find((a) => a.id === selectedApartmentId);
+    const apt = geoAllApartments.find((a) => a.id === selectedApartmentId);
     if (apt && apt.latitude != null && apt.longitude != null) {
       mapRef.current.flyTo([apt.latitude, apt.longitude], 15, {
         duration: 0.5,
       });
     }
-  }, [selectedApartmentId, geoApartments]);
+  }, [selectedApartmentId, geoAllApartments]);
+
+  // Zoom to fit all visible (non-filtered) apartments
+  const handleZoomToFit = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const visibleApts = geoAllApartments.filter(
+      (a) => filteredIds == null || filteredIds.has(a.id)
+    );
+    if (visibleApts.length === 0) return;
+    const bounds = L.latLngBounds(
+      visibleApts.map((a) => [a.latitude!, a.longitude!] as [number, number])
+    );
+    map.fitBounds(bounds.pad(0.1));
+  }, [geoAllApartments, filteredIds]);
 
   return (
     <div className="relative h-full w-full rounded-xl overflow-hidden border border-border">
       <div ref={containerRef} className="h-full w-full" />
-      {geoApartments.length === 0 && (
+
+      {/* Zoom-to-fit button */}
+      <button
+        onClick={handleZoomToFit}
+        className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-medium text-foreground shadow-md border border-border hover:bg-muted transition-colors"
+        title="Zoom to fit all apartments"
+      >
+        <Maximize className="h-3.5 w-3.5" />
+        Fit All
+      </button>
+
+      {geoAllApartments.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80">
           <div className="text-center text-sm text-muted-foreground">
             <p className="text-lg mb-1">🗺️</p>

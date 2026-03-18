@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, Trash2, Search, Upload } from 'lucide-react';
+import { Heart, Trash2, Search, Upload, Database, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const dbConnected = isSupabaseConfigured();
 
   const links = [
     { href: '/', label: 'Favorites', icon: Heart },
@@ -44,6 +46,21 @@ export default function Navbar() {
               <span className="hidden sm:inline">{label}</span>
             </Link>
           ))}
+        </div>
+
+        {/* Storage status indicator */}
+        <div className="ml-auto flex items-center gap-1.5">
+          {dbConnected ? (
+            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[10px] font-medium text-green-700" title="Connected to Supabase database">
+              <Database className="h-3 w-3" />
+              <span className="hidden sm:inline">Supabase</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-medium text-amber-700" title="Using browser localStorage — data is browser-only. Set up Supabase for persistent storage.">
+              <HardDrive className="h-3 w-3" />
+              <span className="hidden sm:inline">Local only</span>
+            </span>
+          )}
         </div>
       </div>
     </nav>

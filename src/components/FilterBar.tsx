@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { SortField } from '@/lib/types';
 import {
@@ -23,7 +24,9 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
 ];
 
 export default function FilterBar() {
-  const { filters, setFilters } = useStore();
+  const { filters, setFilters, userName1, userName2, setUserName } = useStore();
+  const [editingName, setEditingName] = useState<'user1' | 'user2' | null>(null);
+  const [nameText, setNameText] = useState('');
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-3 shadow-sm">
@@ -90,19 +93,46 @@ export default function FilterBar() {
       {/* User filter */}
       <div className="flex items-center gap-1">
         <User className="h-3.5 w-3.5 text-muted-foreground" />
-        {(['all', 'user1', 'user2'] as const).map((u) => (
-          <button
-            key={u}
-            onClick={() => setFilters({ userFilter: u })}
-            className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-              filters.userFilter === u
-                ? 'bg-secondary text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            {u === 'all' ? 'All' : u === 'user1' ? '💖 User 1' : '💙 User 2'}
-          </button>
-        ))}
+        <button
+          onClick={() => setFilters({ userFilter: 'all' })}
+          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+            filters.userFilter === 'all' ? 'bg-secondary text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+        >
+          All
+        </button>
+        {(['user1', 'user2'] as const).map((u) => {
+          const name = u === 'user1' ? userName1 : userName2;
+          const emoji = u === 'user1' ? '💖' : '💙';
+          return editingName === u ? (
+            <div key={u} className="flex items-center gap-1">
+              <input
+                type="text"
+                value={nameText}
+                onChange={(e) => setNameText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { setUserName(u, nameText); setEditingName(null); }
+                  if (e.key === 'Escape') setEditingName(null);
+                }}
+                className="w-20 rounded border border-primary px-1 py-0.5 text-xs outline-none"
+                autoFocus
+              />
+              <button onClick={() => { setUserName(u, nameText); setEditingName(null); }} className="text-[10px] text-primary font-medium">✓</button>
+            </div>
+          ) : (
+            <button
+              key={u}
+              onClick={() => setFilters({ userFilter: u })}
+              onDoubleClick={(e) => { e.stopPropagation(); setNameText(name); setEditingName(u); }}
+              title="Click to filter, double-click to rename"
+              className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                filters.userFilter === u ? 'bg-secondary text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {emoji} {name}
+            </button>
+          );
+        })}
       </div>
 
       {/* Visited filter */}

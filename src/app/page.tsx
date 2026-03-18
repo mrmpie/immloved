@@ -26,6 +26,41 @@ export default function FavoritesPage() {
     fetchApartments();
   }, [fetchApartments]);
 
+  // Auto-fetch thumbnails for apartments that have a URL but no thumbnail
+  useEffect(() => {
+    if (!apartments.length) return;
+    let cancelled = false;
+    const fetchThumbnails = async () => {
+      const missing = apartments.filter(
+        (a) => a.url && !a.thumbnail_url && a.immoscout_id
+      );
+      for (const apt of missing) {
+        if (cancelled) break;
+        try {
+          const res = await fetch('/api/scrape-thumbnail', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: apt.url }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.thumbnail) {
+              const updates: Record<string, string> = { thumbnail_url: data.thumbnail };
+              if (data.gallery?.length) {
+                updates.other_urls = JSON.stringify(data.gallery);
+              }
+              await useStore.getState().updateApartment(apt.id, updates);
+            }
+          }
+        } catch { /* skip */ }
+        // Rate limit
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    };
+    fetchThumbnails();
+    return () => { cancelled = true; };
+  }, [apartments.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!hydrated) return null;
 
   return (
@@ -90,7 +125,7 @@ export default function FavoritesPage() {
               mobileTab === 'map' ? 'w-full' : 'hidden md:block'
             }`}
           >
-            <ApartmentMap apartments={apartments} />
+            <ApartmentMap allApartments={apartments} />
           </div>
         </div>
       </div>

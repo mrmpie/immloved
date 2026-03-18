@@ -7,13 +7,18 @@ interface AppState {
   removedApartments: Apartment[];
   filters: FilterState;
   selectedApartmentId: string | null;
+  filteredIds: Set<string> | null;
   loading: boolean;
   mobileTab: 'list' | 'map';
+  userName1: string;
+  userName2: string;
 
   // Actions
   setFilters: (filters: Partial<FilterState>) => void;
   setSelectedApartment: (id: string | null) => void;
+  setFilteredIds: (ids: Set<string> | null) => void;
   setMobileTab: (tab: 'list' | 'map') => void;
+  setUserName: (user: 'user1' | 'user2', name: string) => void;
   fetchApartments: () => Promise<void>;
   fetchRemovedApartments: () => Promise<void>;
   addApartment: (apt: ApartmentInsert) => Promise<void>;
@@ -46,8 +51,11 @@ export const useStore = create<AppState>((set, get) => ({
   removedApartments: [],
   filters: DEFAULT_FILTERS,
   selectedApartmentId: null,
+  filteredIds: null,
   loading: false,
   mobileTab: 'list',
+  userName1: typeof window !== 'undefined' ? localStorage.getItem('immloved_userName1') || 'Maria' : 'Maria',
+  userName2: typeof window !== 'undefined' ? localStorage.getItem('immloved_userName2') || 'Rodrigo' : 'Rodrigo',
 
   setFilters: (filters) =>
     set((state) => ({ filters: { ...state.filters, ...filters } })),
@@ -55,6 +63,18 @@ export const useStore = create<AppState>((set, get) => ({
   setSelectedApartment: (id) => set({ selectedApartmentId: id }),
 
   setMobileTab: (tab) => set({ mobileTab: tab }),
+
+  setFilteredIds: (ids) => set({ filteredIds: ids }),
+
+  setUserName: (user, name) => {
+    if (user === 'user1') {
+      localStorage.setItem('immloved_userName1', name);
+      set({ userName1: name });
+    } else {
+      localStorage.setItem('immloved_userName2', name);
+      set({ userName2: name });
+    }
+  },
 
   fetchApartments: async () => {
     set({ loading: true });
