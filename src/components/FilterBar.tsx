@@ -12,7 +12,7 @@ import {
   Search,
 } from 'lucide-react';
 
-const ROOM_OPTIONS = [null, 1, 2, 3, 4, 5];
+const ROOM_OPTIONS = [1, 2, 3, 4, 5];
 const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'created_at', label: 'Date Added' },
   { value: 'price', label: 'Price' },
@@ -46,19 +46,37 @@ export default function FilterBar() {
       <div className="flex items-center gap-1">
         <Filter className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-xs text-muted-foreground mr-1">Rooms:</span>
-        {ROOM_OPTIONS.map((r) => (
-          <button
-            key={r ?? 'all'}
-            onClick={() => setFilters({ rooms: r })}
-            className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-              filters.rooms === r
-                ? 'bg-primary text-white'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            {r === null ? 'All' : `${r}`}
-          </button>
-        ))}
+        <button
+          onClick={() => setFilters({ rooms: [] })}
+          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+            filters.rooms.length === 0
+              ? 'bg-primary text-white'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+        >
+          All
+        </button>
+        {ROOM_OPTIONS.map((r) => {
+          const isSelected = filters.rooms.includes(r);
+          return (
+            <button
+              key={r}
+              onClick={() => {
+                const newRooms = isSelected
+                  ? filters.rooms.filter(room => room !== r)
+                  : [...filters.rooms, r];
+                setFilters({ rooms: newRooms });
+              }}
+              className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                isSelected
+                  ? 'bg-primary text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {r}
+            </button>
+          );
+        })}
       </div>
 
       {/* Sort */}
@@ -94,9 +112,11 @@ export default function FilterBar() {
       <div className="flex items-center gap-1">
         <User className="h-3.5 w-3.5 text-muted-foreground" />
         <button
-          onClick={() => setFilters({ userFilter: 'all' })}
+          onClick={() => setFilters({ userFilter: [] })}
           className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-            filters.userFilter === 'all' ? 'bg-secondary text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            filters.userFilter.length === 0
+              ? 'bg-secondary text-white'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
           }`}
         >
           All
@@ -104,6 +124,7 @@ export default function FilterBar() {
         {(['user1', 'user2'] as const).map((u) => {
           const name = u === 'user1' ? userName1 : userName2;
           const emoji = u === 'user1' ? '💖' : '💙';
+          const isSelected = filters.userFilter.includes(u);
           return editingName === u ? (
             <div key={u} className="flex items-center gap-1">
               <input
@@ -122,11 +143,18 @@ export default function FilterBar() {
           ) : (
             <button
               key={u}
-              onClick={() => setFilters({ userFilter: u })}
+              onClick={() => {
+                const newUsers = isSelected
+                  ? filters.userFilter.filter(user => user !== u)
+                  : [...filters.userFilter, u];
+                setFilters({ userFilter: newUsers });
+              }}
               onDoubleClick={(e) => { e.stopPropagation(); setNameText(name); setEditingName(u); }}
               title="Click to filter, double-click to rename"
               className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                filters.userFilter === u ? 'bg-secondary text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                isSelected
+                  ? 'bg-secondary text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
               {emoji} {name}

@@ -3,7 +3,16 @@ export async function geocodeAddress(
   address: string
 ): Promise<{ lat: number; lng: number } | null> {
   try {
-    const query = encodeURIComponent(address);
+    // Ensure Leipzig is included in the query if not already present
+    let searchAddress = address;
+    const lowerAddress = address.toLowerCase();
+    if (!lowerAddress.includes('leipzig') && !lowerAddress.includes('germany')) {
+      searchAddress = `${address}, Leipzig, Germany`;
+    } else if (!lowerAddress.includes('germany')) {
+      searchAddress = `${address}, Germany`;
+    }
+    
+    const query = encodeURIComponent(searchAddress);
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`,
       {

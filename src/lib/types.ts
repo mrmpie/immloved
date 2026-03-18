@@ -14,23 +14,39 @@ export interface Apartment {
   bedrooms: number | null;
   bathrooms: number | null;
   floor: string | null;
+  floor_en: string | null;
   available_from: string | null;
+  available_from_en: string | null;
   type: string | null;
+  type_en: string | null;
   year_built: string | null;
+  year_built_en: string | null;
   condition: string | null;
   condition_en: string | null;
   heating: string | null;
+  heating_en: string | null;
   energy_sources: string | null;
+  energy_sources_en: string | null;
   energy_consumption: string | null;
+  energy_consumption_en: string | null;
   energy_cert: string | null;
+  energy_cert_en: string | null;
   parking: string | null;
+  parking_en: string | null;
   elevator: string | null;
+  elevator_en: string | null;
   listed_building: string | null;
+  listed_building_en: string | null;
   renovation: string | null;
+  renovation_en: string | null;
   rented: string | null;
+  rented_en: string | null;
   rental_income: string | null;
+  rental_income_en: string | null;
   deposit: string | null;
+  deposit_en: string | null;
   district: string | null;
+  district_en: string | null;
   description: string | null;
   description_en: string | null;
   equipment: string | null;
@@ -57,9 +73,13 @@ export interface Apartment {
   preference_rating: number | null;
   rank_order: number | null;
   would_buy: string | null;
+  would_buy_en: string | null;
   pros: string | null;
+  pros_en: string | null;
   cons: string | null;
+  cons_en: string | null;
   zone_rating: string | null;
+  zone_rating_en: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -72,12 +92,12 @@ export type SortField = 'price' | 'price_per_m2' | 'area' | 'rooms' | 'preferenc
 export type SortDirection = 'asc' | 'desc';
 
 export interface FilterState {
-  rooms: number | null;
+  rooms: number[];
   minPrice: number | null;
   maxPrice: number | null;
   minArea: number | null;
   maxArea: number | null;
-  userFilter: 'all' | 'user1' | 'user2';
+  userFilter: ('user1' | 'user2')[];
   visitedFilter: 'all' | 'visited' | 'not_visited';
   sortBy: SortField;
   sortDir: SortDirection;
@@ -85,12 +105,12 @@ export interface FilterState {
 }
 
 export const DEFAULT_FILTERS: FilterState = {
-  rooms: null,
+  rooms: [],
   minPrice: null,
   maxPrice: null,
   minArea: null,
   maxArea: null,
-  userFilter: 'all',
+  userFilter: [],
   visitedFilter: 'all',
   sortBy: 'created_at',
   sortDir: 'desc',

@@ -231,6 +231,11 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
                   <Ruler className="h-3 w-3" />{apt.area} m²
                 </span>
               )}
+              {apt.bathrooms != null && (
+                <span className="flex items-center gap-0.5 text-muted-foreground">
+                  <span className="text-xs">🚿</span>{apt.bathrooms} ba
+                </span>
+              )}
               {apt.district && (
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{apt.district}</span>
               )}
@@ -348,18 +353,20 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
               <EditableDetail field="price" label="Price (€)" value={apt.price} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
               <EditableDetail field="area" label="Area (m²)" value={apt.area} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
               <EditableDetail field="rooms" label="Rooms" value={apt.rooms} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
-              <EditableDetail field="type" label="Type" value={apt.type} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="year_built" label="Year" value={apt.year_built} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="bedrooms" label="Bedrooms" value={apt.bedrooms} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
+              <EditableDetail field="bathrooms" label="Bathrooms" value={apt.bathrooms} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
+              <EditableDetail field="type" label="Type" value={apt.type_en || apt.type} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="year_built" label="Year" value={apt.year_built_en || apt.year_built} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="condition" label="Condition" value={apt.condition_en || apt.condition} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="floor" label="Floor" value={apt.floor} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="heating" label="Heating" value={apt.heating} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="elevator" label="Elevator" value={apt.elevator} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="parking" label="Parking" value={apt.parking} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="district" label="District" value={apt.district} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="rented" label="Rented" value={apt.rented} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="rental_income" label="Rental Income" value={apt.rental_income} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="zone_rating" label="Zone Rating" value={apt.zone_rating} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
-              <EditableDetail field="available_from" label="Available From" value={apt.available_from} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="floor" label="Floor" value={apt.floor_en || apt.floor} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="heating" label="Heating" value={apt.heating_en || apt.heating} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="elevator" label="Elevator" value={apt.elevator_en || apt.elevator} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="parking" label="Parking" value={apt.parking_en || apt.parking} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="district" label="District" value={apt.district_en || apt.district} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="rented" label="Rented" value={apt.rented_en || apt.rented} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="rental_income" label="Rental Income" value={apt.rental_income_en || apt.rental_income} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="zone_rating" label="Zone Rating" value={apt.zone_rating_en || apt.zone_rating} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="available_from" label="Available From" value={apt.available_from_en || apt.available_from} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
             </div>
 
             {/* Editable description */}
@@ -546,6 +553,9 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
               
               {linksExpanded && (
                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                  {/* Editable URL */}
+                  <EditableTextArea field="url" label="Listing URL" value={apt.url} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+
                   {/* Bottom actions */}
                   <div className="flex items-center gap-2 pt-1">
                     {apt.url && (
@@ -630,6 +640,8 @@ function EditableTextArea({
   onSave: (f: string) => void; onChange: (v: string) => void; onCancel: () => void;
   color?: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  
   if (editing === field) {
     return (
       <div>
@@ -649,13 +661,23 @@ function EditableTextArea({
     );
   }
   const colorClass = color === 'green' ? 'text-green-600' : color === 'red' ? 'text-red-500' : 'text-muted-foreground';
+  const shouldTruncate = value && value.length > 300 && !expanded;
+  const displayText = shouldTruncate ? value.slice(0, 300) + '…' : value;
+  
   return (
     <div className="group/edit cursor-pointer" onClick={() => onStart(field, value)}>
       <span className={`font-semibold ${colorClass}`}>{label}:</span>
       <p className="mt-0.5 text-muted-foreground leading-relaxed inline ml-1">
-        {value ? truncate(value, 300) : <span className="italic text-muted-foreground/50">Click to add...</span>}
+        {displayText || <span className="italic text-muted-foreground/50">Click to add...</span>}
       </p>
-      <Pencil className="inline h-2.5 w-2.5 ml-1 text-muted-foreground/30 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
+      {value && value.length > 300 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+          className="ml-2 text-xs text-primary hover:text-primary/80 font-medium"
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
     </div>
   );
 }

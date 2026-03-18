@@ -27,8 +27,8 @@ function applyFilters(apartments: Apartment[], filters: FilterState): Apartment[
   }
 
   // Rooms filter
-  if (filters.rooms != null) {
-    result = result.filter((a) => a.rooms != null && Math.floor(a.rooms) === filters.rooms);
+  if (filters.rooms.length > 0) {
+    result = result.filter((a) => a.rooms != null && filters.rooms.includes(Math.floor(a.rooms)));
   }
 
   // Price range
@@ -48,10 +48,12 @@ function applyFilters(apartments: Apartment[], filters: FilterState): Apartment[
   }
 
   // User filter
-  if (filters.userFilter === 'user1') {
-    result = result.filter((a) => a.user1_favorite);
-  } else if (filters.userFilter === 'user2') {
-    result = result.filter((a) => a.user2_favorite);
+  if (filters.userFilter.length > 0) {
+    result = result.filter((a) => 
+      filters.userFilter.some(user => 
+        user === 'user1' ? a.user1_favorite : a.user2_favorite
+      )
+    );
   }
 
   // Visited filter

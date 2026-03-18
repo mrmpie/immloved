@@ -6,10 +6,31 @@ function extractExposeId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+// Normalize IS24 image URL to get base image identifier
+// IS24 serves same image in multiple sizes: /listings/123-0.jpg/ORIG/resize/800x600/...
+// We want to dedupe these to just the unique base images
+function normalizeImageUrl(url: string): string {
+  // Extract the base image path before size/transformation parameters
+  // Example: https://pictures.immobilienscout24.de/listings/123-0.jpg/ORIG/resize/800x600/... 
+  // -> listings/123-0.jpg
+  const match = url.match(/listings\/(\d+-\d+\.(?:jpg|jpeg|png|webp))/i);
+  return match ? match[1] : url;
+}
+
 // Try multiple strategies to get images for an IS24 expose
 async function fetchImages(url: string): Promise<string[]> {
   const images: string[] = [];
+  const seenBaseImages = new Set<string>();
   const exposeId = extractExposeId(url);
+
+  // Helper to add image only if we haven't seen this base image before
+  const addImage = (imageUrl: string) => {
+    const normalized = normalizeImageUrl(imageUrl);
+    if (!seenBaseImages.has(normalized)) {
+      seenBaseImages.add(normalized);
+      images.push(imageUrl);
+    }
+  };
 
   // Strategy 1: Googlebot UA (IS24 must serve content to search engines)
   const userAgents = [
@@ -34,26 +55,36 @@ async function fetchImages(url: string): Promise<string[]> {
 
       const html = await response.text();
 
-      // og:image meta tag
+      // og:image meta tag (usually the main/best image)
       const ogMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
-      if (ogMatch && ogMatch[1].startsWith('http')) images.push(ogMatch[1]);
+      if (ogMatch && ogMatch[1].startsWith('http')) addImage(ogMatch[1]);
 
       // twitter:image meta tag
       const twMatch = html.match(/<meta\s+(?:name|property)=["']twitter:image["']\s+content=["']([^"']+)["']/i);
-      if (twMatch && twMatch[1].startsWith('http') && !images.includes(twMatch[1])) images.push(twMatch[1]);
+      if (twMatch && twMatch[1].startsWith('http')) addImage(twMatch[1]);
 
-      // IS24 picture CDN URLs from page source
-      const picRegex = /https:\/\/pictures\.immobilienscout24\.de\/listings\/[^\s"'<>)]+\.(?:jpg|jpeg|png|webp)/gi;
-      const picMatches = html.match(picRegex) || [];
-      for (const pic of picMatches) {
-        if (!images.includes(pic)) images.push(pic);
-      }
-
-      // Any IS24 CDN image URLs
-      const cdnRegex = /https:\/\/[^"'\s<>]*immobilienscout24[^"'\s<>]*\.(?:jpg|jpeg|png|webp)/gi;
-      const cdnMatches = html.match(cdnRegex) || [];
-      for (const pic of cdnMatches) {
-        if (!images.includes(pic)) images.push(pic);
+      // Only extract images that match the expose ID to avoid getting recommendation/similar listing images
+      if (exposeId) {
+        // IS24 image URLs for THIS specific expose only
+        // Format: https://pictures.immobilienscout24.de/listings/{exposeId}-{index}.jpg
+        const exposeSpecificRegex = new RegExp(
+          `https://pictures\\.immobilienscout24\\.de/listings/${exposeId}-(\\d+)\\.(?:jpg|jpeg|png|webp)(?:/ORIG)?[^\\s"'<>)]*`,
+          'gi'
+        );
+        const picMatches = html.match(exposeSpecificRegex) || [];
+        
+        // Sort to prefer ORIG quality images
+        const sortedPics = picMatches.sort((a, b) => {
+          const aHasOrig = a.includes('/ORIG');
+          const bHasOrig = b.includes('/ORIG');
+          if (aHasOrig && !bHasOrig) return -1;
+          if (!aHasOrig && bHasOrig) return 1;
+          return 0;
+        });
+        
+        for (const pic of sortedPics) {
+          addImage(pic);
+        }
       }
     } catch { /* try next UA */ }
   }
@@ -70,12 +101,15 @@ async function fetchImages(url: string): Promise<string[]> {
       });
       if (response.ok) {
         const text = await response.text();
-        // Try to extract image URLs from JSON response
-        const jsonPicRegex = /https:\/\/pictures\.immobilienscout24\.de[^"'\s\\]+/gi;
+        // Only match images for THIS specific expose ID
+        const jsonPicRegex = new RegExp(
+          `https://pictures\\.immobilienscout24\\.de/listings/${exposeId}-(\\d+)\\.(?:jpg|jpeg|png|webp)[^"'\\s\\\\]*`,
+          'gi'
+        );
         const jsonPics = text.match(jsonPicRegex) || [];
         for (const pic of jsonPics) {
           const clean = pic.replace(/\\u002F/g, '/').replace(/\\/g, '');
-          if (!images.includes(clean)) images.push(clean);
+          addImage(clean);
         }
       }
     } catch { /* skip */ }
@@ -84,14 +118,14 @@ async function fetchImages(url: string): Promise<string[]> {
   // Strategy 3: Try constructing thumbnail URL from expose ID pattern
   if (images.length === 0 && exposeId) {
     try {
-      // IS24 often has thumbnails at a predictable path - test if it exists
       const testUrl = `https://pictures.immobilienscout24.de/listings/${exposeId}-0.jpg/ORIG/legacy_thumbnail/${exposeId}-0.jpg`;
       const response = await fetch(testUrl, { method: 'HEAD' });
-      if (response.ok) images.push(testUrl);
+      if (response.ok) addImage(testUrl);
     } catch { /* skip */ }
   }
 
-  return [...new Set(images)];
+  // Limit to max 10 unique images to avoid overwhelming the gallery
+  return images.slice(0, 10);
 }
 
 export async function POST(request: NextRequest) {

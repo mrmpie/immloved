@@ -228,19 +228,43 @@ export const useStore = create<AppState>((set, get) => ({
   importApartments: async (apartments) => {
     set({ loading: true });
     if (isSupabaseConfigured() && supabase) {
-      // Upsert by immoscout_id
+      // Get all existing apartments for matching
+      const { data: existingApartments } = await supabase
+        .from('apartments')
+        .select('*');
+      
       for (const apt of apartments) {
+        let existing = null;
+        
+        // Strategy 1: Match by immoscout_id
         if (apt.immoscout_id) {
-          const { data: existing } = await supabase
+          const { data: match } = await supabase
             .from('apartments')
             .select('id')
             .eq('immoscout_id', apt.immoscout_id)
             .single();
-          if (existing) {
-            await supabase.from('apartments').update(apt).eq('id', existing.id);
-          } else {
-            await supabase.from('apartments').insert(apt);
-          }
+          existing = match;
+        }
+        
+        // Strategy 2: Match by URL if no immoscout_id match
+        if (!existing && apt.url) {
+          existing = existingApartments?.find(a => a.url === apt.url);
+        }
+        
+        // Strategy 3: Match by title + address if still no match
+        if (!existing && apt.title && apt.address) {
+          existing = existingApartments?.find(a => 
+            a.title === apt.title && a.address === apt.address
+          );
+        }
+        
+        // Strategy 4: Match by address only as last resort
+        if (!existing && apt.address) {
+          existing = existingApartments?.find(a => a.address === apt.address);
+        }
+        
+        if (existing) {
+          await supabase.from('apartments').update(apt).eq('id', existing.id);
         } else {
           await supabase.from('apartments').insert(apt);
         }
@@ -248,9 +272,30 @@ export const useStore = create<AppState>((set, get) => ({
     } else {
       const all = loadFromLocalStorage();
       for (const apt of apartments) {
-        const existingIdx = apt.immoscout_id
-          ? all.findIndex((a) => a.immoscout_id === apt.immoscout_id)
-          : -1;
+        let existingIdx = -1;
+        
+        // Strategy 1: Match by immoscout_id
+        if (apt.immoscout_id) {
+          existingIdx = all.findIndex((a) => a.immoscout_id === apt.immoscout_id);
+        }
+        
+        // Strategy 2: Match by URL if no immoscout_id match
+        if (existingIdx === -1 && apt.url) {
+          existingIdx = all.findIndex((a) => a.url === apt.url);
+        }
+        
+        // Strategy 3: Match by title + address if still no match
+        if (existingIdx === -1 && apt.title && apt.address) {
+          existingIdx = all.findIndex((a) => 
+            a.title === apt.title && a.address === apt.address
+          );
+        }
+        
+        // Strategy 4: Match by address only as last resort
+        if (existingIdx === -1 && apt.address) {
+          existingIdx = all.findIndex((a) => a.address === apt.address);
+        }
+        
         const newApt: Apartment = {
           ...apt,
           id: apt.id || crypto.randomUUID(),
@@ -258,8 +303,15 @@ export const useStore = create<AppState>((set, get) => ({
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         } as Apartment;
+        
         if (existingIdx >= 0) {
-          all[existingIdx] = { ...all[existingIdx], ...newApt };
+          // Update existing apartment, preserving original created_at
+          all[existingIdx] = { 
+            ...all[existingIdx], 
+            ...newApt,
+            created_at: all[existingIdx].created_at,
+            updated_at: new Date().toISOString(),
+          };
         } else {
           all.push(newApt);
         }

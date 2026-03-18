@@ -21,6 +21,8 @@ function hasMissingData(apt: Apartment): boolean {
     isEmpty(apt.address) ||
     isEmpty(apt.price) ||
     isEmpty(apt.rooms) ||
+    isEmpty(apt.bedrooms) ||
+    isEmpty(apt.bathrooms) ||
     isEmpty(apt.area) ||
     isEmpty(apt.description) ||
     isEmpty(apt.floor) ||
@@ -105,6 +107,8 @@ export default function BulkUpdateButton() {
         if (isEmpty(apt.address) && details.address) updates.address = details.address;
         if (isEmpty(apt.price) && details.price) updates.price = details.price;
         if (isEmpty(apt.rooms) && details.rooms) updates.rooms = details.rooms;
+        if (isEmpty(apt.bedrooms) && details.bedrooms) updates.bedrooms = details.bedrooms;
+        if (isEmpty(apt.bathrooms) && details.bathrooms) updates.bathrooms = details.bathrooms;
         if (isEmpty(apt.area) && details.area) updates.area = details.area;
         if (isEmpty(apt.floor) && details.floor) updates.floor = details.floor;
         if (isEmpty(apt.available_from) && details.available_from) updates.available_from = details.available_from;

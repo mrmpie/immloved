@@ -9,6 +9,8 @@ interface ScrapedDetails {
   address?: string;
   price?: number;
   rooms?: number;
+  bedrooms?: number;
+  bathrooms?: number;
   area?: number;
   floor?: string;
   available_from?: string;
@@ -123,6 +125,12 @@ function extractDetails(html: string): ScrapedDetails {
     } else if ((rawLabel.includes('zimmer') || rawLabel.includes('rooms')) && !details.rooms) {
       const r = parseNumber(rawValue);
       if (r) details.rooms = r;
+    } else if ((rawLabel.includes('schlafzimmer') || rawLabel.includes('schlaf') || rawLabel.includes('bedrooms') || rawLabel.includes('bedroom')) && !details.bedrooms) {
+      const b = parseNumber(rawValue);
+      if (b) details.bedrooms = b;
+    } else if ((rawLabel.includes('badezimmer') || rawLabel.includes('bad') || rawLabel.includes('bathrooms') || rawLabel.includes('bathroom')) && !details.bathrooms) {
+      const b = parseNumber(rawValue);
+      if (b) details.bathrooms = b;
     } else if ((rawLabel.includes('fläche') || rawLabel.includes('wohnfläche') || rawLabel.includes('area')) && !details.area) {
       const a = parseNumber(rawValue);
       if (a) details.area = a;
@@ -160,6 +168,8 @@ function extractDetails(html: string): ScrapedDetails {
     [/data-qa=["']kaufpreis["'][^>]*>([^<]+)/i, 'price'],
     [/data-qa=["']kaltmiete["'][^>]*>([^<]+)/i, 'price'],
     [/data-qa=["']zimmer["'][^>]*>([^<]+)/i, 'rooms'],
+    [/data-qa=["']schlafzimmer["'][^>]*>([^<]+)/i, 'bedrooms'],
+    [/data-qa=["']badezimmer["'][^>]*>([^<]+)/i, 'bathrooms'],
     [/data-qa=["']wohnflaeche["'][^>]*>([^<]+)/i, 'area'],
     [/data-qa=["']etage["'][^>]*>([^<]+)/i, 'floor'],
     [/data-qa=["']baujahr["'][^>]*>([^<]+)/i, 'year_built'],
@@ -177,6 +187,12 @@ function extractDetails(html: string): ScrapedDetails {
         } else if (key === 'rooms') {
           const r = parseNumber(val);
           if (r) details.rooms = r;
+        } else if (key === 'bedrooms') {
+          const b = parseNumber(val);
+          if (b) details.bedrooms = b;
+        } else if (key === 'bathrooms') {
+          const b = parseNumber(val);
+          if (b) details.bathrooms = b;
         } else if (key === 'area') {
           const a = parseNumber(val);
           if (a) details.area = a;
