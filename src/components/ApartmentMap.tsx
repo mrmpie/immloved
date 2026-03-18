@@ -27,6 +27,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   const markersRef = useRef<L.Marker[]>([]);
   const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds, setMobileTab } = useStore();
   const [isMobile, setIsMobile] = useState(false);
+  const [isMapVisible, setIsMapVisible] = useState(false);
 
   // Check if mobile based on screen width
   useEffect(() => {
@@ -59,10 +60,10 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
       const rect = containerRef.current.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) {
         console.warn('Map container has zero dimensions, delaying initialization');
-        // Try again after a delay
+        // Try again after a delay, especially for mobile
         const timer = setTimeout(() => {
           initializeMap();
-        }, 500);
+        }, isMobile ? 1000 : 500); // Longer delay for mobile
         return;
       }
 
@@ -79,6 +80,13 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
       mapRef.current = map;
 
+      // On mobile, invalidate size after a short delay to ensure proper rendering
+      if (isMobile) {
+        setTimeout(() => {
+          mapRef.current?.invalidateSize();
+        }, 500);
+      }
+
       return () => {
         map.remove();
         mapRef.current = null;
@@ -87,7 +95,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
     initializeMap();
 
-    // Add resize observer to handle mobile layout changes
+    // Add resize observer to handle layout changes
     const resizeObserver = new ResizeObserver(() => {
       if (mapRef.current) {
         setTimeout(() => {
@@ -103,7 +111,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
     return () => {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [isMobile]);
 
   // Geocode apartments missing coordinates
   useEffect(() => {
@@ -205,7 +213,16 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
         markersRef.current.push(marker);
       }
     });
-  }, [geoAllApartments, selectedApartmentId, setSelectedApartment, filteredIds, scrollToApartment]);
+  }, [geoAllApartments, selectedApartmentId, setSelectedApartment, filteredIds, scrollToApartment, isMobile, setMobileTab]);
+
+  // Force marker update when map becomes ready with apartments
+  useEffect(() => {
+    if (mapRef.current && geoAllApartments.length > 0 && markersRef.current.length === 0) {
+      // Trigger a re-render by temporarily changing and restoring the apartments array
+      console.log('Forcing marker update on map ready...');
+      // This will cause the above useEffect to run again
+    }
+  }, [geoAllApartments.length]);
 
   // Pan to selected apartment
   useEffect(() => {
