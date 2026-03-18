@@ -21,7 +21,13 @@ const ApartmentMap = dynamic(() => import('@/components/ApartmentMap'), {
 export default function FavoritesPage() {
   const { apartments, fetchApartments, loading, mobileTab, setMobileTab } = useStore();
   const [hydrated, setHydrated] = useState(false);
-  const [filterBarExpanded, setFilterBarExpanded] = useState(true);
+  const [filterBarExpanded, setFilterBarExpanded] = useState(true); // Will be updated based on screen size
+
+  // Set filter bar expanded state based on screen size
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768; // md breakpoint
+    setFilterBarExpanded(!isMobile);
+  }, []);
 
   useEffect(() => {
     setHydrated(true);
