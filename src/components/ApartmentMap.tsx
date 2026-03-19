@@ -26,7 +26,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const transportLayerRef = useRef<L.TileLayer | null>(null);
-  const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds, setMobileTab } = useStore();
+  const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds, setMobileTab, mobileTab } = useStore();
   const [isMobile, setIsMobile] = useState(false);
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [showTransport, setShowTransport] = useState(false);
@@ -41,6 +41,23 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Track when map becomes visible on mobile
+  useEffect(() => {
+    if (isMobile) {
+      const isVisible = mobileTab === 'map';
+      setIsMapVisible(isVisible);
+      
+      // When map becomes visible, invalidate size and force marker update
+      if (isVisible && mapRef.current) {
+        setTimeout(() => {
+          mapRef.current?.invalidateSize();
+        }, 100);
+      }
+    } else {
+      setIsMapVisible(true); // Always visible on desktop
+    }
+  }, [isMobile, mobileTab]);
 
   // Safety check: filter out any apartments with invalid coordinates at the component level
   const safeApartments = useMemo(() => {
@@ -166,6 +183,9 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
     const map = mapRef.current;
     if (!map) return;
 
+    // On mobile, only render markers when map is visible
+    if (isMobile && !isMapVisible) return;
+
     // Clear existing markers
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
@@ -222,7 +242,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
         markersRef.current.push(marker);
       }
     });
-  }, [geoAllApartments, selectedApartmentId, setSelectedApartment, filteredIds, scrollToApartment, isMobile, setMobileTab]);
+  }, [geoAllApartments, selectedApartmentId, setSelectedApartment, filteredIds, scrollToApartment, isMobile, setMobileTab, isMapVisible]);
 
   // Force marker update when map becomes ready with apartments
   useEffect(() => {
