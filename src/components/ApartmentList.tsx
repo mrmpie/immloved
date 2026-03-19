@@ -56,6 +56,11 @@ function applyFilters(apartments: Apartment[], filters: FilterState): Apartment[
     );
   }
 
+  // Both users filter
+  if (filters.bothUsersFilter) {
+    result = result.filter((a) => a.user1_favorite && a.user2_favorite);
+  }
+
   // Visited filter
   if (filters.visitedFilter === 'visited') {
     result = result.filter((a) => a.user1_visited || a.user2_visited);

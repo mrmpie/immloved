@@ -98,6 +98,7 @@ export interface FilterState {
   minArea: number | null;
   maxArea: number | null;
   userFilter: ('user1' | 'user2')[];
+  bothUsersFilter: boolean;
   visitedFilter: 'all' | 'visited' | 'not_visited';
   sortBy: SortField;
   sortDir: SortDirection;
@@ -111,6 +112,7 @@ export const DEFAULT_FILTERS: FilterState = {
   minArea: null,
   maxArea: null,
   userFilter: [],
+  bothUsersFilter: false,
   visitedFilter: 'all',
   sortBy: 'created_at',
   sortDir: 'desc',

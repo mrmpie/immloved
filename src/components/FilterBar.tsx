@@ -112,9 +112,9 @@ export default function FilterBar() {
       <div className="flex items-center gap-1">
         <User className="h-3.5 w-3.5 text-muted-foreground" />
         <button
-          onClick={() => setFilters({ userFilter: [] })}
+          onClick={() => setFilters({ userFilter: [], bothUsersFilter: false })}
           className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-            filters.userFilter.length === 0
+            filters.userFilter.length === 0 && !filters.bothUsersFilter
               ? 'bg-secondary text-white'
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
           }`}
@@ -147,7 +147,7 @@ export default function FilterBar() {
                 const newUsers = isSelected
                   ? filters.userFilter.filter(user => user !== u)
                   : [...filters.userFilter, u];
-                setFilters({ userFilter: newUsers });
+                setFilters({ userFilter: newUsers, bothUsersFilter: false });
               }}
               onDoubleClick={(e) => { e.stopPropagation(); setNameText(name); setEditingName(u); }}
               title="Click to filter, double-click to rename"
@@ -161,6 +161,17 @@ export default function FilterBar() {
             </button>
           );
         })}
+        <button
+          onClick={() => setFilters({ bothUsersFilter: !filters.bothUsersFilter, userFilter: [] })}
+          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+            filters.bothUsersFilter
+              ? 'bg-secondary text-white'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+          title="Show apartments loved by both users"
+        >
+          💖💙 Both Love
+        </button>
       </div>
 
       {/* Visited filter */}
