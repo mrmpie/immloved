@@ -26,7 +26,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const transportLayerRef = useRef<L.TileLayer | null>(null);
-  const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds, setMobileTab, mobileTab } = useStore();
+  const { selectedApartmentId, setSelectedApartment, updateApartment, filteredIds, setMobileTab, mobileTab, centerMapApartmentId, setCenterMapApartment } = useStore();
   const [isMobile, setIsMobile] = useState(false);
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [showTransport, setShowTransport] = useState(false);
@@ -267,11 +267,11 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
   // Pan to selected apartment
   useEffect(() => {
-    if (!mapRef.current || !selectedApartmentId) return;
+    if (!mapRef.current || !centerMapApartmentId) return;
     
-    const apt = geoAllApartments.find((a) => a.id === selectedApartmentId);
-    console.log('Selected apartment for flyTo:', { 
-      selectedApartmentId, 
+    const apt = geoAllApartments.find((a) => a.id === centerMapApartmentId);
+    console.log('Centering apartment for flyTo:', { 
+      centerMapApartmentId, 
       apt: apt ? { 
         id: apt.id, 
         title: apt.title, 
@@ -313,6 +313,11 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
             console.error('Error with setView fallback:', fallbackError);
           }
         }
+        
+        // Reset the centerMapApartmentId after centering
+        setTimeout(() => {
+          setCenterMapApartment(null);
+        }, 100);
       };
       
       // Use requestAnimationFrame to ensure the map is rendered
@@ -320,7 +325,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
         setTimeout(flyToApartment, 100); // Small delay for mobile
       });
     }
-  }, [selectedApartmentId, geoAllApartments]);
+  }, [centerMapApartmentId, geoAllApartments, setCenterMapApartment]);
 
   // Toggle transport layer
   const toggleTransport = useCallback(() => {

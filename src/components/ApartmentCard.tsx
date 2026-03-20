@@ -35,7 +35,7 @@ interface ApartmentCardProps {
 
 const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   function ApartmentCard({ apartment, isSelected, onSelect, showRestore = false }, ref) {
-  const { updateApartment, removeApartment, restoreApartment, userName1, userName2 } = useStore();
+  const { updateApartment, removeApartment, restoreApartment, userName1, userName2, setCenterMapApartment } = useStore();
   const [expanded, setExpanded] = useState(false);
   const [linksExpanded, setLinksExpanded] = useState(false);
   const [imageUrlsExpanded, setImageUrlsExpanded] = useState(false);
@@ -203,7 +203,15 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold leading-tight line-clamp-2">
+            <h3 
+              className="text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect();
+                setCenterMapApartment(apt.id);
+              }}
+              title="Click to center on map"
+            >
               {apt.title_en || apt.title || 'Untitled'}
             </h3>
 
@@ -227,9 +235,14 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
                 </div>
               ) : (
                 <span
-                  className="truncate cursor-pointer hover:text-foreground"
+                  className="truncate cursor-pointer hover:text-foreground transition-colors"
                   onDoubleClick={(e) => { e.stopPropagation(); setEditingAddress(true); }}
-                  title="Double-click to edit address"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect();
+                    setCenterMapApartment(apt.id);
+                  }}
+                  title="Click to center on map, double-click to edit address"
                 >
                   {apt.address || 'No address'}
                 </span>

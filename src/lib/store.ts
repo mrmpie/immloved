@@ -7,6 +7,7 @@ interface AppState {
   removedApartments: Apartment[];
   filters: FilterState;
   selectedApartmentId: string | null;
+  centerMapApartmentId: string | null;
   filteredIds: Set<string> | null;
   loading: boolean;
   mobileTab: 'list' | 'map';
@@ -16,6 +17,7 @@ interface AppState {
   // Actions
   setFilters: (filters: Partial<FilterState>) => void;
   setSelectedApartment: (id: string | null) => void;
+  setCenterMapApartment: (id: string | null) => void;
   setFilteredIds: (ids: Set<string> | null) => void;
   setMobileTab: (tab: 'list' | 'map') => void;
   setUserName: (user: 'user1' | 'user2', name: string) => void;
@@ -51,6 +53,7 @@ export const useStore = create<AppState>((set, get) => ({
   removedApartments: [],
   filters: DEFAULT_FILTERS,
   selectedApartmentId: null,
+  centerMapApartmentId: null,
   filteredIds: null,
   loading: false,
   mobileTab: 'list',
@@ -61,6 +64,8 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ filters: { ...state.filters, ...filters } })),
 
   setSelectedApartment: (id) => set({ selectedApartmentId: id }),
+
+  setCenterMapApartment: (id) => set({ centerMapApartmentId: id }),
 
   setMobileTab: (tab) => set({ mobileTab: tab }),
 
