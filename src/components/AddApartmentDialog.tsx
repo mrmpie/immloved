@@ -65,7 +65,6 @@ export default function AddApartmentDialog() {
         listed_building: null,
         renovation: null,
         rented: null,
-        rental_income: null,
         deposit: null,
         district: null,
         description: null,

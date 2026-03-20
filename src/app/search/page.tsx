@@ -94,8 +94,6 @@ export default function SearchPage() {
       renovation_en: null,
       rented: null,
       rented_en: null,
-      rental_income: null,
-      rental_income_en: null,
       deposit: null,
       deposit_en: null,
       district: null,

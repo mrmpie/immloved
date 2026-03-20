@@ -54,8 +54,6 @@ create table if not exists apartments (
   renovation_en text,
   rented text,
   rented_en text,
-  rental_income text,
-  rental_income_en text,
   deposit text,
   deposit_en text,
   district text,

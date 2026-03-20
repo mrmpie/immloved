@@ -113,8 +113,6 @@ export function parseVisitadosSheet(data: ArrayBuffer): ApartmentInsert[] {
       renovation_en: null,
       rented: getString(row, 'Rented'),
       rented_en: null,
-      rental_income: getString(row, 'Monthly rental income'),
-      rental_income_en: null,
       deposit: getString(row, 'Deposit', 'Kaution'),
       deposit_en: null,
       district: getString(row, 'District', 'Grupo'),

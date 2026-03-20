@@ -45,8 +45,6 @@ export interface Apartment {
   renovation_en: string | null;
   rented: string | null;
   rented_en: string | null;
-  rental_income: string | null;
-  rental_income_en: string | null;
   deposit: string | null;
   deposit_en: string | null;
   district: string | null;
@@ -92,7 +90,7 @@ export type ApartmentInsert = Omit<Apartment, 'id' | 'price_per_m2' | 'created_a
   'title_en' | 'floor_en' | 'available_from_en' | 'type_en' | 'year_built_en' | 
   'condition_en' | 'heating_en' | 'energy_sources_en' | 'energy_consumption_en' | 
   'energy_cert_en' | 'parking_en' | 'elevator_en' | 'listed_building_en' | 
-  'renovation_en' | 'rented_en' | 'rental_income_en' | 'deposit_en' | 
+  'renovation_en' | 'rented_en' | 'deposit_en' | 
   'district_en' | 'description_en' | 'equipment_en' | 'location_description_en' | 
   'would_buy_en' | 'pros_en' | 'cons_en' | 'zone_rating_en' | 'agency_fee_en'> & {
   id?: string;
