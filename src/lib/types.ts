@@ -31,6 +31,10 @@ export interface Apartment {
   energy_consumption_en: string | null;
   energy_cert: string | null;
   energy_cert_en: string | null;
+  kitchen: boolean | null;
+  hausgeld: number | null;
+  agency_fee: string | null;
+  agency_fee_en: string | null;
   parking: string | null;
   parking_en: string | null;
   elevator: string | null;
@@ -90,11 +94,11 @@ export type ApartmentInsert = Omit<Apartment, 'id' | 'price_per_m2' | 'created_a
   'energy_cert_en' | 'parking_en' | 'elevator_en' | 'listed_building_en' | 
   'renovation_en' | 'rented_en' | 'rental_income_en' | 'deposit_en' | 
   'district_en' | 'description_en' | 'equipment_en' | 'location_description_en' | 
-  'would_buy_en' | 'pros_en' | 'cons_en' | 'zone_rating_en'> & {
+  'would_buy_en' | 'pros_en' | 'cons_en' | 'zone_rating_en' | 'agency_fee_en'> & {
   id?: string;
 };
 
-export type SortField = 'price' | 'price_per_m2' | 'area' | 'rooms' | 'combined_visit_date';
+export type SortField = 'price' | 'price_per_m2' | 'area' | 'rooms' | 'preference_rating' | 'combined_visit_date';
 export type SortDirection = 'asc' | 'desc';
 
 export interface FilterState {

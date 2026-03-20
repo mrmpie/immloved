@@ -93,6 +93,8 @@ export const useStore = create<AppState>((set, get) => ({
         // For combined visit dates, we need to sort client-side since it involves logic
         // Fetch with basic ordering and let the client handle the combined logic
         query = query.order('price', { ascending: filters.sortDir === 'asc', nullsFirst: false });
+      } else if (filters.sortBy === 'preference_rating') {
+        query = query.order('preference_rating', { ascending: filters.sortDir === 'asc', nullsFirst: false });
       } else {
         query = query.order('price', { ascending: filters.sortDir === 'asc', nullsFirst: false });
       }

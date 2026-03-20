@@ -206,11 +206,20 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
         !isFiltered ? userClass : '',
       ].filter(Boolean).join(' ');
 
+      // Create star rating HTML if rating exists - show all 5 stars
+      const starsHtml = apt.preference_rating 
+        ? `<div class="stars">
+            ${[1, 2, 3, 4, 5].map(star => 
+              `<span class="${star <= (apt.preference_rating || 0) ? 'filled' : ''}">★</span>`
+            ).join('')}
+           </div>` 
+        : '';
+
       const icon = L.divIcon({
         className: '',
-        html: `<div class="${classes}">${formatPrice(apt.price)}</div>`,
-        iconSize: [80, 28],
-        iconAnchor: [40, 14],
+        html: `<div class="${classes}">${formatPrice(apt.price)}${starsHtml}</div>`,
+        iconSize: [80, apt.preference_rating ? 40 : 28],
+        iconAnchor: [40, apt.preference_rating ? 20 : 14],
       });
 
       // Additional safety check before creating marker

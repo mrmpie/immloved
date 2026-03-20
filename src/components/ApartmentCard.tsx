@@ -129,8 +129,17 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   };
 
   const saveEditField = (field: string) => {
-    const numFields = ['price', 'area', 'rooms', 'bedrooms', 'bathrooms'];
-    const val = numFields.includes(field) ? (editFieldValue ? parseFloat(editFieldValue) : null) : (editFieldValue || null);
+    const numFields = ['price', 'area', 'rooms', 'bedrooms', 'bathrooms', 'hausgeld'];
+    const boolFields = ['kitchen'];
+    let val: string | number | boolean | null;
+    if (boolFields.includes(field)) {
+      const lower = editFieldValue.trim().toLowerCase();
+      val = lower === 'yes' || lower === 'ja' || lower === 'true' || lower === '1' ? true : lower === 'no' || lower === 'nein' || lower === 'false' || lower === '0' ? false : null;
+    } else if (numFields.includes(field)) {
+      val = editFieldValue ? parseFloat(editFieldValue) : null;
+    } else {
+      val = editFieldValue || null;
+    }
     updateApartment(apt.id, { [field]: val } as Partial<Apartment>);
     setEditingField(null);
   };
@@ -374,6 +383,9 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
               <EditableDetail field="floor" label="Floor" value={apt.floor_en || apt.floor} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="heating" label="Heating" value={apt.heating_en || apt.heating} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="elevator" label="Elevator" value={apt.elevator_en || apt.elevator} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="kitchen" label="Kitchen" value={apt.kitchen == null ? null : apt.kitchen ? 'Yes' : 'No'} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
+              <EditableDetail field="hausgeld" label="Hausgeld (€)" value={apt.hausgeld} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} type="number" />
+              <EditableDetail field="agency_fee" label="Agency Fee" value={apt.agency_fee_en || apt.agency_fee} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="parking" label="Parking" value={apt.parking_en || apt.parking} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="district" label="District" value={apt.district_en || apt.district} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
               <EditableDetail field="rented" label="Rented" value={apt.rented_en || apt.rented} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />

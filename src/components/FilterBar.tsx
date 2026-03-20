@@ -18,6 +18,7 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'price_per_m2', label: 'Price/m²' },
   { value: 'area', label: 'Area' },
   { value: 'rooms', label: 'Rooms' },
+  { value: 'preference_rating', label: 'Preference' },
   { value: 'combined_visit_date', label: 'Visited' },
 ];
 

@@ -95,6 +95,14 @@ export function parseVisitadosSheet(data: ArrayBuffer): ApartmentInsert[] {
       energy_consumption_en: null,
       energy_cert: getString(row, 'Energy Certificate', 'Energieausweis'),
       energy_cert_en: null,
+      kitchen: (() => {
+        const v = getString(row, 'Kitchen', 'Küche', 'Einbauküche');
+        if (!v) return null;
+        const lower = v.toLowerCase();
+        return lower === 'yes' || lower === 'ja' || lower === 'true' || lower === '1';
+      })(),
+      hausgeld: getNumber(row, 'Hausgeld', 'Hausgeld (€)', 'Condominium Fee'),
+      agency_fee: getString(row, 'Agency Fee', 'Provision', 'Maklerprovision', 'Courtage'),
       parking: getString(row, 'Parking', 'Stellplatz'),
       parking_en: null,
       elevator: getString(row, 'Elevator', 'Aufzug'),
