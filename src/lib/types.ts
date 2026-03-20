@@ -84,7 +84,13 @@ export interface Apartment {
   updated_at: string;
 }
 
-export type ApartmentInsert = Omit<Apartment, 'id' | 'price_per_m2' | 'created_at' | 'updated_at'> & {
+export type ApartmentInsert = Omit<Apartment, 'id' | 'price_per_m2' | 'created_at' | 'updated_at' | 
+  'title_en' | 'floor_en' | 'available_from_en' | 'type_en' | 'year_built_en' | 
+  'condition_en' | 'heating_en' | 'energy_sources_en' | 'energy_consumption_en' | 
+  'energy_cert_en' | 'parking_en' | 'elevator_en' | 'listed_building_en' | 
+  'renovation_en' | 'rented_en' | 'rental_income_en' | 'deposit_en' | 
+  'district_en' | 'description_en' | 'equipment_en' | 'location_description_en' | 
+  'would_buy_en' | 'pros_en' | 'cons_en' | 'zone_rating_en'> & {
   id?: string;
 };
 

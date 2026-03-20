@@ -14,100 +14,99 @@ export default function AddApartmentDialog() {
   const [price, setPrice] = useState('');
   const [area, setArea] = useState('');
   const [rooms, setRooms] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { addApartment } = useStore();
 
   const handleSubmit = async () => {
-    const immoscoutId = extractImmoscoutId(url);
-    const apt: ApartmentInsert = {
-      immoscout_id: immoscoutId,
-      url: url || null,
-      title: title || null,
-      title_en: null,
-      address: address || null,
-      latitude: null,
-      longitude: null,
-      price: price ? parseFloat(price) : null,
-      area: area ? parseFloat(area) : null,
-      rooms: rooms ? parseFloat(rooms) : null,
-      bedrooms: null,
-      bathrooms: null,
-      floor: null,
-      floor_en: null,
-      available_from: null,
-      available_from_en: null,
-      type: null,
-      type_en: null,
-      year_built: null,
-      year_built_en: null,
-      condition: null,
-      condition_en: null,
-      heating: null,
-      heating_en: null,
-      energy_sources: null,
-      energy_sources_en: null,
-      energy_consumption: null,
-      energy_consumption_en: null,
-      energy_cert: null,
-      energy_cert_en: null,
-      parking: null,
-      parking_en: null,
-      elevator: null,
-      elevator_en: null,
-      listed_building: null,
-      listed_building_en: null,
-      renovation: null,
-      renovation_en: null,
-      rented: null,
-      rented_en: null,
-      rental_income: null,
-      rental_income_en: null,
-      deposit: null,
-      deposit_en: null,
-      district: null,
-      district_en: null,
-      description: null,
-      description_en: null,
-      equipment: null,
-      equipment_en: null,
-      location_description: null,
-      location_description_en: null,
-      contact_name: null,
-      contact_company: null,
-      contact_phone: null,
-      contact_email: null,
-      company_website: null,
-      thumbnail_url: null,
-      other_urls: null,
-      is_favorite: true,
-      is_removed: false,
-      user1_favorite: false,
-      user2_favorite: false,
-      user1_comment: null,
-      user2_comment: null,
-      user1_visited: false,
-      user1_visit_date: null,
-      user2_visited: false,
-      user2_visit_date: null,
-      preference_rating: null,
-      rank_order: null,
-      would_buy: null,
-      would_buy_en: null,
-      pros: null,
-      pros_en: null,
-      cons: null,
-      cons_en: null,
-      zone_rating: null,
-      zone_rating_en: null,
-    };
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const immoscoutId = extractImmoscoutId(url);
+      
+      // Check for duplicates
+      if (immoscoutId) {
+        const { apartments } = useStore.getState();
+        const existing = apartments.find(a => a.immoscout_id === immoscoutId);
+        if (existing) {
+          setError('This apartment already exists in your favorites!');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      const apt: ApartmentInsert = {
+        immoscout_id: immoscoutId,
+        url: url || null,
+        title: title || null,
+        address: address || null,
+        latitude: null,
+        longitude: null,
+        price: price ? parseFloat(price) : null,
+        area: area ? parseFloat(area) : null,
+        rooms: rooms ? parseFloat(rooms) : null,
+        bedrooms: null,
+        bathrooms: null,
+        floor: null,
+        available_from: null,
+        type: null,
+        year_built: null,
+        condition: null,
+        heating: null,
+        energy_sources: null,
+        energy_consumption: null,
+        energy_cert: null,
+        parking: null,
+        elevator: null,
+        listed_building: null,
+        renovation: null,
+        rented: null,
+        rental_income: null,
+        deposit: null,
+        district: null,
+        description: null,
+        equipment: null,
+        location_description: null,
+        contact_name: null,
+        contact_company: null,
+        contact_phone: null,
+        contact_email: null,
+        company_website: null,
+        thumbnail_url: null,
+        other_urls: null,
+        is_favorite: true,
+        is_removed: false,
+        user1_favorite: false,
+        user2_favorite: false,
+        user1_comment: null,
+        user2_comment: null,
+        user1_visited: false,
+        user1_visit_date: null,
+        user2_visited: false,
+        user2_visit_date: null,
+        preference_rating: null,
+        rank_order: null,
+        would_buy: null,
+        pros: null,
+        cons: null,
+        zone_rating: null,
+      };
 
-    await addApartment(apt);
-    setUrl('');
-    setTitle('');
-    setAddress('');
-    setPrice('');
-    setArea('');
-    setRooms('');
-    setOpen(false);
+      await addApartment(apt);
+      setUrl('');
+      setTitle('');
+      setAddress('');
+      setPrice('');
+      setArea('');
+      setRooms('');
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add apartment');
+      console.error('Error adding apartment:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!open) {
@@ -134,6 +133,12 @@ export default function AddApartmentDialog() {
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {error && (
+          <div className="mb-3 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            {error}
+          </div>
+        )}
 
         <div className="space-y-3">
           <div>
@@ -215,9 +220,10 @@ export default function AddApartmentDialog() {
           </button>
           <button
             onClick={handleSubmit}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
+            disabled={loading}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Add to Favorites
+            {loading ? 'Adding...' : 'Add to Favorites'}
           </button>
         </div>
       </div>

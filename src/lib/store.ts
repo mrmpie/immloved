@@ -124,7 +124,11 @@ export const useStore = create<AppState>((set, get) => ({
   addApartment: async (apt) => {
     if (isSupabaseConfigured() && supabase) {
       const { error } = await supabase.from('apartments').insert(apt);
-      if (!error) await get().fetchApartments();
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw new Error(error.message || 'Failed to add apartment to database');
+      }
+      await get().fetchApartments();
     } else {
       const all = loadFromLocalStorage();
       const newApt: Apartment = {
