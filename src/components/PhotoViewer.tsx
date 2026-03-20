@@ -7,9 +7,10 @@ interface PhotoViewerProps {
   images: string[];
   initialIndex: number;
   onClose: () => void;
+  onImageChange?: (index: number) => void;
 }
 
-export default function PhotoViewer({ images, initialIndex, onClose }: PhotoViewerProps) {
+export default function PhotoViewer({ images, initialIndex, onClose, onImageChange }: PhotoViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -18,11 +19,15 @@ export default function PhotoViewer({ images, initialIndex, onClose }: PhotoView
   const minSwipeDistance = 50;
 
   const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    const newIndex = (currentIndex - 1 + images.length) % images.length;
+    setCurrentIndex(newIndex);
+    onImageChange?.(newIndex);
   };
 
   const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
+    const newIndex = (currentIndex + 1) % images.length;
+    setCurrentIndex(newIndex);
+    onImageChange?.(newIndex);
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -66,7 +71,7 @@ export default function PhotoViewer({ images, initialIndex, onClose }: PhotoView
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+      className="fixed inset-0 z-[1100] bg-black/95 flex items-center justify-center"
       onClick={onClose}
     >
       {/* Close button */}

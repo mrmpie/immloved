@@ -173,7 +173,16 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
         {/* Header row */}
         <div className="flex items-start gap-3">
           {/* Thumbnail */}
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-secondary/10 text-2xl overflow-hidden relative">
+          <div 
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-secondary/10 text-2xl overflow-hidden relative cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (proxiedImages.length > 0) {
+                setViewerIndex(0);
+                setViewerOpen(true);
+              }
+            }}
+          >
             {proxiedImages.length > 0 ? (
               <img
                 src={proxiedImages[0]}
