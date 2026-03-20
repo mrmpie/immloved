@@ -71,11 +71,37 @@ function applyFilters(apartments: Apartment[], filters: FilterState): Apartment[
   // Sort
   const dir = filters.sortDir === 'asc' ? 1 : -1;
   result.sort((a, b) => {
+    // Handle combined visit date - use the earliest/latest visit from either user
+    if (filters.sortBy === 'combined_visit_date') {
+      const getCombinedVisitDate = (apt: Apartment) => {
+        const dates = [];
+        if (apt.user1_visit_date) dates.push(new Date(apt.user1_visit_date));
+        if (apt.user2_visit_date) dates.push(new Date(apt.user2_visit_date));
+        if (dates.length === 0) return null;
+        
+        // For ascending: return earliest (oldest) date
+        // For descending: return latest (most recent) date
+        return dir === 1 ? new Date(Math.min(...dates.map(d => d.getTime()))) 
+                         : new Date(Math.max(...dates.map(d => d.getTime())));
+      };
+      
+      const dateA = getCombinedVisitDate(a);
+      const dateB = getCombinedVisitDate(b);
+      
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return 1;
+      if (dateB == null) return -1;
+      
+      return (dateA.getTime() - dateB.getTime()) * dir;
+    }
+    
+    // Handle other fields normally
     const av = a[filters.sortBy as keyof Apartment];
     const bv = b[filters.sortBy as keyof Apartment];
     if (av == null && bv == null) return 0;
     if (av == null) return 1;
     if (bv == null) return -1;
+    
     if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
     return String(av).localeCompare(String(bv)) * dir;
   });

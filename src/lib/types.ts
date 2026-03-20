@@ -94,7 +94,7 @@ export type ApartmentInsert = Omit<Apartment, 'id' | 'price_per_m2' | 'created_a
   id?: string;
 };
 
-export type SortField = 'price' | 'price_per_m2' | 'area' | 'rooms' | 'preference_rating' | 'rank_order' | 'created_at';
+export type SortField = 'price' | 'price_per_m2' | 'area' | 'rooms' | 'combined_visit_date';
 export type SortDirection = 'asc' | 'desc';
 
 export interface FilterState {
@@ -120,7 +120,7 @@ export const DEFAULT_FILTERS: FilterState = {
   userFilter: [],
   bothUsersFilter: false,
   visitedFilter: 'all',
-  sortBy: 'created_at',
+  sortBy: 'price',
   sortDir: 'desc',
   searchQuery: '',
 };

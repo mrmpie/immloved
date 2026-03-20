@@ -14,13 +14,11 @@ import {
 
 const ROOM_OPTIONS = [1, 2, 3, 4, 5];
 const SORT_OPTIONS: { value: SortField; label: string }[] = [
-  { value: 'created_at', label: 'Date Added' },
   { value: 'price', label: 'Price' },
   { value: 'price_per_m2', label: 'Price/m²' },
   { value: 'area', label: 'Area' },
   { value: 'rooms', label: 'Rooms' },
-  { value: 'preference_rating', label: 'Preference' },
-  { value: 'rank_order', label: 'Custom Rank' },
+  { value: 'combined_visit_date', label: 'Visited' },
 ];
 
 export default function FilterBar() {

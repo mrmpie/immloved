@@ -79,12 +79,25 @@ export const useStore = create<AppState>((set, get) => ({
   fetchApartments: async () => {
     set({ loading: true });
     if (isSupabaseConfigured() && supabase) {
-      const { data, error } = await supabase
+      const { filters } = get();
+      
+      // Build query dynamically based on sort selection
+      let query = supabase
         .from('apartments')
         .select('*')
         .eq('is_favorite', true)
-        .eq('is_removed', false)
-        .order('rank_order', { ascending: true, nullsFirst: false });
+        .eq('is_removed', false);
+      
+      // Apply ordering based on current sort selection
+      if (filters.sortBy === 'combined_visit_date') {
+        // For combined visit dates, we need to sort client-side since it involves logic
+        // Fetch with basic ordering and let the client handle the combined logic
+        query = query.order('price', { ascending: filters.sortDir === 'asc', nullsFirst: false });
+      } else {
+        query = query.order('price', { ascending: filters.sortDir === 'asc', nullsFirst: false });
+      }
+      
+      const { data, error } = await query;
       if (!error && data) {
         set({ apartments: data as Apartment[], loading: false });
       } else {
