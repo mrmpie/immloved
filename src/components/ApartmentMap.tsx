@@ -224,7 +224,10 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
       // Additional safety check before creating marker
       if (isValidCoordinate(apt.latitude, apt.longitude)) {
-        const marker = L.marker([apt.latitude!, apt.longitude!], { icon }).addTo(map);
+        const marker = L.marker([apt.latitude!, apt.longitude!], { 
+          icon,
+          zIndexOffset: isSelected ? 1000 : 0
+        }).addTo(map);
 
         marker.on('click', () => {
           setSelectedApartment(apt.id);
