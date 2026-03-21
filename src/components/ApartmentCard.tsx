@@ -29,6 +29,7 @@ import {
   Bike,
   Footprints,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 
 interface ApartmentCardProps {
@@ -57,6 +58,7 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   const [viewerIndex, setViewerIndex] = useState(0);
   const [travelDurations, setTravelDurations] = useState<TravelDurations | null>(null);
   const [travelLoading, setTravelLoading] = useState(false);
+  const [updatingFromUrl, setUpdatingFromUrl] = useState(false);
 
   const apt = apartment;
 
@@ -172,6 +174,35 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
     }
     updateApartment(apt.id, { [field]: val } as Partial<Apartment>);
     setEditingField(null);
+  };
+
+  const handleUpdateFromUrl = async () => {
+    if (!apt.url) return;
+    
+    setUpdatingFromUrl(true);
+    try {
+      const response = await fetch('/api/update-apartment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: apt.url, apartmentId: apt.id }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update apartment');
+      }
+      
+      const { updateData } = await response.json();
+      
+      // Update the apartment with the new data
+      await updateApartment(apt.id, updateData);
+      
+    } catch (error) {
+      console.error('Update from URL failed:', error);
+      alert('Failed to update apartment: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setUpdatingFromUrl(false);
+    }
   };
 
   return (
@@ -666,11 +697,31 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
                   <EditableTextArea field="url" label="Listing URL" value={apt.url} editing={editingField} editValue={editFieldValue} onStart={startEditField} onSave={saveEditField} onChange={setEditFieldValue} onCancel={() => setEditingField(null)} />
 
                   {/* Bottom actions */}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
                     {apt.url && (
-                      <a href={apt.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded bg-secondary/10 px-2 py-1 text-[10px] font-medium text-secondary hover:bg-secondary/20">
-                        <ExternalLink className="h-3 w-3" />View on ImmoScout24
-                      </a>
+                      <>
+                        <a href={apt.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded bg-secondary/10 px-2 py-1 text-[10px] font-medium text-secondary hover:bg-secondary/20">
+                          <ExternalLink className="h-3 w-3" />View on ImmoScout24
+                        </a>
+                        
+                        {/* Update from URL button */}
+                        <button
+                          onClick={handleUpdateFromUrl}
+                          disabled={updatingFromUrl}
+                          className="flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Fetch complete details, images and translate from German"
+                        >
+                          {updatingFromUrl ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />Updating...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-3 w-3" />Update from URL
+                            </>
+                          )}
+                        </button>
+                      </>
                     )}
                     {showRestore ? (
                       <button onClick={() => restoreApartment(apt.id)} className="flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-200">
