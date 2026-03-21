@@ -192,7 +192,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
     geoAllApartments.forEach((apt) => {
       const isSelected = apt.id === selectedApartmentId;
-      const isFiltered = filteredIds != null && !filteredIds.has(apt.id);
+      const isFiltered = filteredIds != null && filteredIds.has(apt.id);
       const userClass = apt.user1_favorite
         ? 'user1'
         : apt.user2_favorite
@@ -202,8 +202,8 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
       const classes = [
         'price-marker',
         isSelected ? 'selected' : '',
-        isFiltered ? 'filtered-out' : '',
-        !isFiltered ? userClass : '',
+        !isFiltered ? 'filtered-out' : '',
+        isFiltered ? userClass : '',
       ].filter(Boolean).join(' ');
 
       // Create star rating HTML if rating exists - show all 5 stars
@@ -226,7 +226,7 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
       if (isValidCoordinate(apt.latitude, apt.longitude)) {
         const marker = L.marker([apt.latitude!, apt.longitude!], { 
           icon,
-          zIndexOffset: isSelected ? 1000 : 0
+          zIndexOffset: isSelected ? 1000 : isFiltered ? 500 : 0
         }).addTo(map);
 
         marker.on('click', () => {
