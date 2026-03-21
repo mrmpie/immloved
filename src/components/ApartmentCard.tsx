@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, forwardRef } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { formatPrice, formatPricePerM2, truncate } from '@/lib/utils';
+import { fetchTravelDurations, getCachedDurations, TravelDurations } from '@/lib/route';
 import PhotoViewer from './PhotoViewer';
 import {
   Heart,
@@ -24,6 +25,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Image as ImageIcon,
+  Train,
+  Bike,
+  Footprints,
+  Loader2,
 } from 'lucide-react';
 
 interface ApartmentCardProps {
@@ -50,8 +55,33 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   const [visitDateValue, setVisitDateValue] = useState('');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [travelDurations, setTravelDurations] = useState<TravelDurations | null>(null);
+  const [travelLoading, setTravelLoading] = useState(false);
 
   const apt = apartment;
+
+  // Fetch travel durations to Hbf when card is selected
+  useEffect(() => {
+    if (!isSelected || !apt.latitude || !apt.longitude) {
+      return;
+    }
+    const cached = getCachedDurations(apt.id);
+    if (cached) {
+      setTravelDurations(cached);
+      return;
+    }
+    let cancelled = false;
+    setTravelLoading(true);
+    fetchTravelDurations(apt.id, apt.latitude, apt.longitude).then((result) => {
+      if (!cancelled) {
+        setTravelDurations(result);
+        setTravelLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setTravelLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [isSelected, apt.id, apt.latitude, apt.longitude]);
 
   // Proxy external images to avoid hotlink blocks
   const proxyUrl = (url: string) => {
@@ -276,6 +306,39 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
             </div>
           </div>
         </div>
+
+        {/* Travel to Hbf - shown when selected */}
+        {isSelected && apt.latitude && apt.longitude && (
+          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+            <span className="font-semibold text-foreground flex items-center gap-0.5">
+              <Train className="h-3 w-3" />Hbf:
+            </span>
+            {travelLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : travelDurations ? (
+              <>
+                <span className="flex items-center gap-0.5" title={`Walking: ${travelDurations.walkingDist} km`}>
+                  <Footprints className="h-3 w-3" />{travelDurations.walking} min
+                </span>
+                <span className="flex items-center gap-0.5" title={`Cycling: ${travelDurations.cyclingDist} km`}>
+                  <Bike className="h-3 w-3" />{travelDurations.cycling} min
+                </span>
+                <span className="flex items-center gap-0.5" title={`Transit estimate (~${travelDurations.straightDist} km straight line)`}>
+                  <Train className="h-3 w-3" />~{travelDurations.transit} min
+                </span>
+                <a
+                  href={travelDurations.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-0.5 text-primary hover:text-primary/80 font-medium"
+                  title="Open transit directions in Google Maps"
+                >
+                  <ExternalLink className="h-2.5 w-2.5" />Maps
+                </a>
+              </>
+            ) : null}
+          </div>
+        )}
 
         {/* Rating stars */}
         <div className="mt-2 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>

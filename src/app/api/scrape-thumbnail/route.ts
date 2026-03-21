@@ -35,7 +35,6 @@ async function fetchImages(url: string): Promise<string[]> {
   // Strategy 1: Googlebot UA (IS24 must serve content to search engines)
   const userAgents = [
     'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-    'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
     'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uagroup.php)',
   ];
 
@@ -49,29 +48,54 @@ async function fetchImages(url: string): Promise<string[]> {
           'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
         },
         redirect: 'follow',
+        // Limit response size to prevent memory issues
+        signal: AbortSignal.timeout(10000), // 10s timeout
       });
 
       if (!response.ok) continue;
 
-      const html = await response.text();
+      // Stream text with size limit to prevent memory exhaustion
+      const reader = response.body?.getReader();
+      if (!reader) continue;
+      
+      let html = '';
+      const maxSize = 2 * 1024 * 1024; // 2MB limit
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        html += chunk;
+        
+        // Stop if we exceed size limit
+        if (html.length > maxSize) {
+          reader.cancel();
+          break;
+        }
+      }
 
-      // og:image meta tag (usually the main/best image)
+      // Only process meta tags for main image (faster than full regex)
       const ogMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
       if (ogMatch && ogMatch[1].startsWith('http')) addImage(ogMatch[1]);
 
-      // twitter:image meta tag
       const twMatch = html.match(/<meta\s+(?:name|property)=["']twitter:image["']\s+content=["']([^"']+)["']/i);
       if (twMatch && twMatch[1].startsWith('http')) addImage(twMatch[1]);
 
-      // Only extract images that match the expose ID to avoid getting recommendation/similar listing images
-      if (exposeId) {
-        // IS24 image URLs for THIS specific expose only
-        // Format: https://pictures.immobilienscout24.de/listings/{exposeId}-{index}.jpg
+      // Only extract images that match the expose ID (limited scope)
+      if (exposeId && images.length < 5) {
         const exposeSpecificRegex = new RegExp(
-          `https://pictures\\.immobilienscout24\\.de/listings/${exposeId}-(\\d+)\\.(?:jpg|jpeg|png|webp)(?:/ORIG)?[^\\s"'<>)]*`,
+          `https://pictures\.immobilienscout24\.de/listings/${exposeId}-(\\d+)\\.(?:jpg|jpeg|png|webp)(?:/ORIG)?[^\\s"'<>)]*`,
           'gi'
         );
-        const picMatches = html.match(exposeSpecificRegex) || [];
+        
+        // Use exec instead of match for better memory efficiency
+        let match;
+        const picMatches = [];
+        while ((match = exposeSpecificRegex.exec(html)) !== null && picMatches.length < 10) {
+          picMatches.push(match[0]);
+        }
         
         // Sort to prefer ORIG quality images
         const sortedPics = picMatches.sort((a, b) => {
@@ -86,6 +110,9 @@ async function fetchImages(url: string): Promise<string[]> {
           addImage(pic);
         }
       }
+      
+      // Clean up
+      reader.releaseLock();
     } catch { /* try next UA */ }
   }
 
@@ -98,18 +125,41 @@ async function fetchImages(url: string): Promise<string[]> {
           'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
           'Accept': 'application/json',
         },
+        signal: AbortSignal.timeout(5000), // 5s timeout for API
       });
       if (response.ok) {
-        const text = await response.text();
-        // Only match images for THIS specific expose ID
-        const jsonPicRegex = new RegExp(
-          `https://pictures\\.immobilienscout24\\.de/listings/${exposeId}-(\\d+)\\.(?:jpg|jpeg|png|webp)[^"'\\s\\\\]*`,
-          'gi'
-        );
-        const jsonPics = text.match(jsonPicRegex) || [];
-        for (const pic of jsonPics) {
-          const clean = pic.replace(/\\u002F/g, '/').replace(/\\/g, '');
-          addImage(clean);
+        const reader = response.body?.getReader();
+        if (reader) {
+          let text = '';
+          const maxSize = 512 * 1024; // 512KB limit for JSON
+          const decoder = new TextDecoder();
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            text += chunk;
+            
+            if (text.length > maxSize) {
+              reader.cancel();
+              break;
+            }
+          }
+          
+          // Only match images for THIS specific expose ID (limited scope)
+          const jsonPicRegex = new RegExp(
+            `https://pictures\.immobilienscout24\.de/listings/${exposeId}-(\\d+)\\.(?:jpg|jpeg|png|webp)[^"'\\s\\\\]*`,
+            'gi'
+          );
+          
+          let match;
+          while ((match = jsonPicRegex.exec(text)) !== null && images.length < 5) {
+            const clean = match[0].replace(/\\u002F/g, '/').replace(/\\/g, '');
+            addImage(clean);
+          }
+          
+          reader.releaseLock();
         }
       }
     } catch { /* skip */ }
@@ -119,7 +169,10 @@ async function fetchImages(url: string): Promise<string[]> {
   if (images.length === 0 && exposeId) {
     try {
       const testUrl = `https://pictures.immobilienscout24.de/listings/${exposeId}-0.jpg/ORIG/legacy_thumbnail/${exposeId}-0.jpg`;
-      const response = await fetch(testUrl, { method: 'HEAD' });
+      const response = await fetch(testUrl, { 
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000), // 3s timeout
+      });
       if (response.ok) addImage(testUrl);
     } catch { /* skip */ }
   }

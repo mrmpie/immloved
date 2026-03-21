@@ -41,27 +41,45 @@ export default function FavoritesPage() {
       const missing = apartments.filter(
         (a) => a.url && !a.thumbnail_url && a.immoscout_id
       );
-      for (const apt of missing) {
+      
+      // Process in smaller batches to prevent memory buildup
+      const batchSize = 3;
+      for (let i = 0; i < missing.length; i += batchSize) {
         if (cancelled) break;
-        try {
-          const res = await fetch('/api/scrape-thumbnail', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: apt.url }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.thumbnail) {
-              const updates: Record<string, string> = { thumbnail_url: data.thumbnail };
-              if (data.gallery?.length) {
-                updates.other_urls = JSON.stringify(data.gallery);
+        
+        const batch = missing.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (apt) => {
+            if (cancelled) return;
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+              
+              const res = await fetch('/api/scrape-thumbnail', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: apt.url }),
+                signal: controller.signal,
+              });
+              
+              clearTimeout(timeoutId);
+              
+              if (res.ok) {
+                const data = await res.json();
+                if (data.thumbnail) {
+                  const updates: Record<string, string> = { thumbnail_url: data.thumbnail };
+                  if (data.gallery?.length) {
+                    updates.other_urls = JSON.stringify(data.gallery);
+                  }
+                  await useStore.getState().updateApartment(apt.id, updates);
+                }
               }
-              await useStore.getState().updateApartment(apt.id, updates);
-            }
-          }
-        } catch { /* skip */ }
-        // Rate limit
-        await new Promise((r) => setTimeout(r, 1500));
+            } catch { /* skip failed requests */ }
+          })
+        );
+        
+        // Longer delay between batches to allow memory cleanup
+        await new Promise((r) => setTimeout(r, 2000));
       }
     };
     fetchThumbnails();

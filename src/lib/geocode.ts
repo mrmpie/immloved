@@ -19,9 +19,35 @@ export async function geocodeAddress(
         headers: {
           'User-Agent': 'Immloved/1.0',
         },
+        signal: AbortSignal.timeout(5000), // 5s timeout
       }
     );
-    const data = await res.json();
+    
+    if (!res.ok) return null;
+    
+    // Read response with size limit
+    const reader = res.body?.getReader();
+    if (!reader) return null;
+    
+    let text = '';
+    const maxSize = 50 * 1024; // 50KB limit
+    const decoder = new TextDecoder();
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      text += chunk;
+      
+      if (text.length > maxSize) {
+        reader.cancel();
+        return null;
+      }
+    }
+    
+    reader.releaseLock();
+    const data = JSON.parse(text);
     if (data && data.length > 0 && data[0].lat && data[0].lon) {
       const lat = parseFloat(data[0].lat);
       const lng = parseFloat(data[0].lon);
@@ -31,7 +57,11 @@ export async function geocodeAddress(
       }
     }
     return null;
-  } catch {
+  } catch (error) {
+    // Log timeout errors for debugging
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      console.warn('Geocoding timeout for address:', address);
+    }
     return null;
   }
 }
