@@ -28,7 +28,7 @@ export default function FilterBar() {
   const [nameText, setNameText] = useState('');
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-3 shadow-sm">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-3 shadow-sm shadow-black/5">
       {/* Search */}
       <div className="relative flex-1 min-w-[180px]">
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

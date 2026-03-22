@@ -378,52 +378,53 @@ export default function AiAnalysis() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* Header */}
-      <div className="border-b border-border bg-white px-4 py-3">
+      <div className="border-b border-border bg-white px-3 py-2 sm:px-4 sm:py-3">
         <div className="mx-auto max-w-screen-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h1 className="text-lg font-semibold">AI Apartment Analysis</h1>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                {filtered.length} of {apartments.length} apartments
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
+              <h1 className="text-base font-semibold sm:text-lg">AI Analysis</h1>
+              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full sm:text-xs sm:px-2 flex-shrink-0">
+                {filtered.length}/{apartments.length}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <button
                 onClick={() => setFiltersExpanded(!filtersExpanded)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:gap-1.5 sm:px-3 ${
                   filtersExpanded
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 <Filter className="h-3.5 w-3.5" />
-                Filters
+                <span className="hidden sm:inline">Filters</span>
                 {filtersExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
               {messages.length > 0 && (
                 <button
                   onClick={clearChat}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors sm:gap-1.5 sm:px-3"
+                  title="Clear chat"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Clear chat
+                  <span className="hidden sm:inline">Clear</span>
                 </button>
               )}
               <button
                 onClick={copyForChatGPT}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+                className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs font-medium hover:bg-muted transition-colors sm:gap-1.5 sm:px-3"
                 title="Copy a formatted prompt with filtered apartment data to paste into ChatGPT"
               >
                 {copied ? (
                   <>
                     <Check className="h-3.5 w-3.5 text-green-600" />
-                    Copied!
+                    <span className="hidden sm:inline">Copied!</span>
                   </>
                 ) : (
                   <>
                     <ClipboardCopy className="h-3.5 w-3.5" />
-                    Copy for ChatGPT
+                    <span className="hidden sm:inline">Copy</span>
                   </>
                 )}
               </button>
@@ -432,8 +433,10 @@ export default function AiAnalysis() {
 
           {/* Collapsible filter bar */}
           {filtersExpanded && (
-            <div className="mt-3 animate-in slide-in-from-top-2 duration-200">
-              <FilterBar />
+            <div className="sticky top-0 z-10 animate-in slide-in-from-top-2 duration-200">
+              <div className="border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+                <FilterBar />
+              </div>
             </div>
           )}
         </div>
