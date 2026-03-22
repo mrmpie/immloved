@@ -178,28 +178,70 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
 
   const handleUpdateFromUrl = async () => {
     if (!apt.url) return;
-    
+
     setUpdatingFromUrl(true);
     try {
-      const response = await fetch('/api/update-apartment', {
+      const res = await fetch('/api/scrape-details', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: apt.url, apartmentId: apt.id }),
+        body: JSON.stringify({ url: apt.url }),
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update apartment');
+
+      if (!res.ok) throw new Error('Scrape failed (' + res.status + ')');
+
+      const data = await res.json();
+
+      if (data.unavailable) throw new Error('Listing is no longer available on ImmoScout24');
+      if (data.botBlocked) throw new Error('Bot challenge detected — open the page manually first to solve the captcha');
+
+      const d = data.details ?? {};
+      if (!d || Object.keys(d).length === 0) throw new Error('No data returned from scraper');
+
+      const updates: Partial<Apartment> = {};
+      if (d.title)                updates.title               = d.title;
+      if (d.address)              updates.address             = d.address;
+      if (d.price)                updates.price               = d.price;
+      if (d.rooms)                updates.rooms               = d.rooms;
+      if (d.bedrooms)             updates.bedrooms            = d.bedrooms;
+      if (d.bathrooms)            updates.bathrooms           = d.bathrooms;
+      if (d.area)                 updates.area                = d.area;
+      if (d.floor)                updates.floor               = d.floor;
+      if (d.available_from)       updates.available_from      = d.available_from;
+      if (d.deposit)              updates.deposit             = d.deposit;
+      if (d.type)                 updates.type                = d.type;
+      if (d.year_built)           updates.year_built          = d.year_built;
+      if (d.condition)            updates.condition           = d.condition;
+      if (d.heating)              updates.heating             = d.heating;
+      if (d.energy_consumption)   updates.energy_consumption  = d.energy_consumption;
+      if (d.energy_cert)          updates.energy_cert         = d.energy_cert;
+      if (d.energy_sources)       updates.energy_sources      = d.energy_sources;
+      if (d.parking)              updates.parking             = d.parking;
+      if (d.elevator)             updates.elevator            = d.elevator;
+      if (d.listed_building)      updates.listed_building     = d.listed_building;
+      if (d.description)          updates.description         = d.description;
+      if (d.equipment)            updates.equipment           = d.equipment;
+      if (d.location_description) updates.location_description = d.location_description;
+      if (d.contact_name)         updates.contact_name        = d.contact_name;
+      if (d.contact_company)      updates.contact_company     = d.contact_company;
+      if (d.contact_phone)        updates.contact_phone       = d.contact_phone;
+      if (d.thumbnail_url)        updates.thumbnail_url       = d.thumbnail_url;
+      if (d.other_urls)           updates.other_urls          = d.other_urls;
+
+      // Geocode new address
+      if (updates.address) {
+        try {
+          const { geocodeAddress } = await import('@/lib/geocode');
+          const coords = await geocodeAddress(updates.address);
+          if (coords) { updates.latitude = coords.lat; updates.longitude = coords.lng; }
+        } catch { /* skip */ }
       }
-      
-      const { updateData } = await response.json();
-      
-      // Update the apartment with the new data
-      await updateApartment(apt.id, updateData);
-      
+
+      if (Object.keys(updates).length > 0) {
+        await updateApartment(apt.id, updates);
+      }
     } catch (error) {
       console.error('Update from URL failed:', error);
-      alert('Failed to update apartment: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert('Update failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setUpdatingFromUrl(false);
     }
