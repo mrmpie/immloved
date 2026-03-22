@@ -95,6 +95,14 @@ create table if not exists apartments (
   cons_en text,
   zone_rating text,
   zone_rating_en text,
+  -- Hbf travel information (persistent, calculated once)
+  hbf_walk_time integer,
+  hbf_walk_dist numeric(4,1),
+  hbf_bike_time integer,
+  hbf_bike_dist numeric(4,1),
+  hbf_transit_time integer,
+  hbf_straight_dist numeric(4,1),
+  hbf_calculated_at timestamptz,
   -- Timestamps
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

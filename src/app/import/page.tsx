@@ -5,7 +5,7 @@ import { useStore } from '@/lib/store';
 import { parseVisitadosSheet } from '@/lib/excel-import';
 import BulkUpdateButton from '@/components/BulkUpdateButton';
 import TranslateButton from '@/components/TranslateButton';
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Train } from 'lucide-react';
 
 export default function ImportPage() {
   const { importApartments, apartments } = useStore();
@@ -13,6 +13,8 @@ export default function ImportPage() {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [preview, setPreview] = useState<number>(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [migratingHbf, setMigratingHbf] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,6 +51,35 @@ export default function ImportPage() {
     setImporting(false);
   };
 
+  const handleMigrateHbf = async () => {
+    setMigratingHbf(true);
+    setMigrationResult(null);
+
+    try {
+      const res = await fetch('/api/migrate-hbf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Migration failed');
+      }
+
+      setMigrationResult({
+        success: true,
+        message: data.message || 'Migration completed successfully',
+      });
+    } catch (err) {
+      setMigrationResult({
+        success: false,
+        message: `Migration error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      });
+    }
+    setMigratingHbf(false);
+  };
+
   return (
     <div className="mx-auto max-w-screen-md p-4">
       <div className="mb-6">
@@ -70,8 +101,44 @@ export default function ImportPage() {
         <div className="flex flex-wrap items-center gap-2">
           <BulkUpdateButton />
           <TranslateButton />
+          <button
+            onClick={handleMigrateHbf}
+            disabled={migratingHbf}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+            title="Calculate Hbf distances for all apartments without this data"
+          >
+            {migratingHbf ? (
+              <>
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Calculating...
+              </>
+            ) : (
+              <>
+                <Train className="h-3.5 w-3.5" />
+                Calculate Hbf Distances
+              </>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Migration Result */}
+      {migrationResult && (
+        <div
+          className={`mb-6 flex items-center gap-2 rounded-xl border p-4 ${
+            migrationResult.success
+              ? 'border-green-200 bg-green-50 text-green-800'
+              : 'border-red-200 bg-red-50 text-red-800'
+          }`}
+        >
+          {migrationResult.success ? (
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
+          ) : (
+            <AlertCircle className="h-5 w-5 shrink-0" />
+          )}
+          <p className="text-sm font-medium">{migrationResult.message}</p>
+        </div>
+      )}
 
       {/* File upload */}
       <div className="rounded-xl border-2 border-dashed border-border bg-white p-8 text-center shadow-sm hover:border-primary/50 transition-colors">

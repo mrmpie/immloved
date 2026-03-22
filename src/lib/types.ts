@@ -82,6 +82,13 @@ export interface Apartment {
   cons_en: string | null;
   zone_rating: string | null;
   zone_rating_en: string | null;
+  hbf_walk_time: number | null;
+  hbf_walk_dist: number | null;
+  hbf_bike_time: number | null;
+  hbf_bike_dist: number | null;
+  hbf_transit_time: number | null;
+  hbf_straight_dist: number | null;
+  hbf_calculated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -92,7 +99,9 @@ export type ApartmentInsert = Omit<Apartment, 'id' | 'price_per_m2' | 'created_a
   'energy_cert_en' | 'parking_en' | 'elevator_en' | 'listed_building_en' | 
   'renovation_en' | 'rented_en' | 'deposit_en' | 
   'district_en' | 'description_en' | 'equipment_en' | 'location_description_en' | 
-  'would_buy_en' | 'pros_en' | 'cons_en' | 'zone_rating_en' | 'agency_fee_en'> & {
+  'would_buy_en' | 'pros_en' | 'cons_en' | 'zone_rating_en' | 'agency_fee_en' |
+  'hbf_walk_time' | 'hbf_walk_dist' | 'hbf_bike_time' | 'hbf_bike_dist' | 
+  'hbf_transit_time' | 'hbf_straight_dist' | 'hbf_calculated_at'> & {
   id?: string;
 };
 

@@ -4,7 +4,6 @@ import { useState, useEffect, forwardRef } from 'react';
 import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { formatPrice, formatPricePerM2, truncate } from '@/lib/utils';
-import { fetchTravelDurations, getCachedDurations, TravelDurations } from '@/lib/route';
 import PhotoViewer from './PhotoViewer';
 import {
   Heart,
@@ -56,34 +55,48 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   const [visitDateValue, setVisitDateValue] = useState('');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
-  const [travelDurations, setTravelDurations] = useState<TravelDurations | null>(null);
-  const [travelLoading, setTravelLoading] = useState(false);
+  const [calculatingHbf, setCalculatingHbf] = useState(false);
   const [updatingFromUrl, setUpdatingFromUrl] = useState(false);
 
   const apt = apartment;
 
-  // Fetch travel durations to Hbf when card is selected
-  useEffect(() => {
-    if (!isSelected || !apt.latitude || !apt.longitude) {
-      return;
-    }
-    const cached = getCachedDurations(apt.id);
-    if (cached) {
-      setTravelDurations(cached);
-      return;
-    }
-    let cancelled = false;
-    setTravelLoading(true);
-    fetchTravelDurations(apt.id, apt.latitude, apt.longitude).then((result) => {
-      if (!cancelled) {
-        setTravelDurations(result);
-        setTravelLoading(false);
+  // Calculate Hbf data if missing
+  const handleCalculateHbf = async () => {
+    if (calculatingHbf) return;
+    if (!apt.latitude && !apt.longitude && !apt.address) return;
+    
+    setCalculatingHbf(true);
+    try {
+      const res = await fetch('/api/calculate-hbf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apartmentId: apt.id,
+          latitude: apt.latitude,
+          longitude: apt.longitude,
+          address: apt.address,
+        }),
+      });
+      
+      if (!res.ok) throw new Error('Failed to calculate Hbf data');
+      
+      const result = await res.json();
+      if (result.success) {
+        updateApartment(apt.id, result.data);
       }
-    }).catch(() => {
-      if (!cancelled) setTravelLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [isSelected, apt.id, apt.latitude, apt.longitude]);
+    } catch (error) {
+      console.error('Calculate Hbf error:', error);
+    } finally {
+      setCalculatingHbf(false);
+    }
+  };
+
+  // Auto-calculate Hbf data when card is selected if not already calculated
+  useEffect(() => {
+    if (isSelected && (apt.latitude || apt.longitude || apt.address) && !apt.hbf_calculated_at && !calculatingHbf) {
+      handleCalculateHbf();
+    }
+  }, [isSelected, apt.id, apt.latitude, apt.longitude, apt.address, apt.hbf_calculated_at]);
 
   // Proxy external images to avoid hotlink blocks
   const proxyUrl = (url: string) => {
@@ -150,8 +163,31 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
     });
   };
 
-  const handleSaveAddress = () => {
-    updateApartment(apt.id, { address: addressText, latitude: null, longitude: null });
+  const handleSaveAddress = async () => {
+    if (!addressText.trim()) {
+      updateApartment(apt.id, { address: addressText, latitude: null, longitude: null });
+      setEditingAddress(false);
+      return;
+    }
+
+    try {
+      const { geocodeAddress } = await import('@/lib/geocode');
+      const coords = await geocodeAddress(addressText);
+      
+      if (coords) {
+        updateApartment(apt.id, { 
+          address: addressText, 
+          latitude: coords.lat, 
+          longitude: coords.lng 
+        });
+      } else {
+        updateApartment(apt.id, { address: addressText });
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      updateApartment(apt.id, { address: addressText });
+    }
+    
     setEditingAddress(false);
   };
 
@@ -380,27 +416,33 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
           </div>
         </div>
 
-        {/* Travel to Hbf - shown when selected */}
-        {isSelected && apt.latitude && apt.longitude && (
+        {/* Travel to Hbf - always shown if coordinates or address exist */}
+        {(apt.latitude || apt.longitude || apt.address) && (
           <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground" onClick={(e) => e.stopPropagation()}>
             <span className="font-semibold text-foreground flex items-center gap-0.5">
               <Train className="h-3 w-3" />Hbf:
             </span>
-            {travelLoading ? (
+            {calculatingHbf ? (
               <Loader2 className="h-3 w-3 animate-spin" />
-            ) : travelDurations ? (
+            ) : apt.hbf_calculated_at ? (
               <>
-                <span className="flex items-center gap-0.5" title={`Walking: ${travelDurations.walkingDist} km`}>
-                  <Footprints className="h-3 w-3" />{travelDurations.walking} min
-                </span>
-                <span className="flex items-center gap-0.5" title={`Cycling: ${travelDurations.cyclingDist} km`}>
-                  <Bike className="h-3 w-3" />{travelDurations.cycling} min
-                </span>
-                <span className="flex items-center gap-0.5" title={`Transit estimate (~${travelDurations.straightDist} km straight line)`}>
-                  <Train className="h-3 w-3" />~{travelDurations.transit} min
-                </span>
+                {apt.hbf_walk_time != null && (
+                  <span className="flex items-center gap-0.5" title={`Walking: ${apt.hbf_walk_dist} km`}>
+                    <Footprints className="h-3 w-3" />{apt.hbf_walk_time} min
+                  </span>
+                )}
+                {apt.hbf_bike_time != null && (
+                  <span className="flex items-center gap-0.5" title={`Cycling: ${apt.hbf_bike_dist} km`}>
+                    <Bike className="h-3 w-3" />{apt.hbf_bike_time} min
+                  </span>
+                )}
+                {apt.hbf_transit_time != null && (
+                  <span className="flex items-center gap-0.5" title={`Transit estimate (~${apt.hbf_straight_dist} km straight line)`}>
+                    <Train className="h-3 w-3" />~{apt.hbf_transit_time} min
+                  </span>
+                )}
                 <a
-                  href={travelDurations.googleMapsUrl}
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${apt.latitude},${apt.longitude}&destination=51.3455,12.3828&travelmode=transit`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-0.5 text-primary hover:text-primary/80 font-medium"
@@ -408,8 +450,22 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
                 >
                   <ExternalLink className="h-2.5 w-2.5" />Maps
                 </a>
+                <button
+                  onClick={handleCalculateHbf}
+                  className="flex items-center gap-0.5 text-muted-foreground hover:text-foreground"
+                  title="Recalculate Hbf distances"
+                >
+                  <RefreshCw className="h-2.5 w-2.5" />
+                </button>
               </>
-            ) : null}
+            ) : (
+              <button
+                onClick={handleCalculateHbf}
+                className="flex items-center gap-0.5 text-primary hover:text-primary/80 font-medium"
+              >
+                <RefreshCw className="h-3 w-3" />Calculate
+              </button>
+            )}
           </div>
         )}
 

@@ -35,14 +35,31 @@ export default function AddApartmentDialog() {
           return;
         }
       }
+
+      // Geocode address if provided
+      let lat: number | null = null;
+      let lng: number | null = null;
+      
+      if (address && address.trim()) {
+        try {
+          const { geocodeAddress } = await import('@/lib/geocode');
+          const coords = await geocodeAddress(address.trim());
+          if (coords) {
+            lat = coords.lat;
+            lng = coords.lng;
+          }
+        } catch (geocodeError) {
+          console.warn('Geocoding failed, continuing without coordinates:', geocodeError);
+        }
+      }
       
       const apt: ApartmentInsert = {
         immoscout_id: immoscoutId,
         url: url || null,
         title: title || null,
         address: address || null,
-        latitude: null,
-        longitude: null,
+        latitude: lat,
+        longitude: lng,
         price: price ? parseFloat(price) : null,
         area: area ? parseFloat(area) : null,
         rooms: rooms ? parseFloat(rooms) : null,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, Trash2, Search, Upload, Database, HardDrive } from 'lucide-react';
+import { Heart, Trash2, Search, Upload, Database, HardDrive, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -15,6 +15,7 @@ export default function Navbar() {
     { href: '/search', label: 'Search', icon: Search },
     { href: '/removed', label: 'Removed', icon: Trash2 },
     { href: '/import', label: 'Import', icon: Upload },
+    { href: '/analysis', label: 'AI Analysis', icon: Sparkles },
   ];
 
   return (

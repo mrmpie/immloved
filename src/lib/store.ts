@@ -13,6 +13,7 @@ interface AppState {
   mobileTab: 'list' | 'map';
   userName1: string;
   userName2: string;
+  aiChatMessages: { role: 'user' | 'assistant'; content: string }[];
 
   // Actions
   setFilters: (filters: Partial<FilterState>) => void;
@@ -28,6 +29,7 @@ interface AppState {
   removeApartment: (id: string) => Promise<void>;
   restoreApartment: (id: string) => Promise<void>;
   importApartments: (apartments: ApartmentInsert[]) => Promise<void>;
+  setAiChatMessages: (messages: { role: 'user' | 'assistant'; content: string }[]) => void;
 }
 
 // LocalStorage fallback when Supabase is not configured
@@ -59,6 +61,7 @@ export const useStore = create<AppState>((set, get) => ({
   mobileTab: 'list',
   userName1: typeof window !== 'undefined' ? localStorage.getItem('immloved_userName1') || 'Maria' : 'Maria',
   userName2: typeof window !== 'undefined' ? localStorage.getItem('immloved_userName2') || 'Rodrigo' : 'Rodrigo',
+  aiChatMessages: [],
 
   setFilters: (filters) =>
     set((state) => ({ filters: { ...state.filters, ...filters } })),
@@ -70,6 +73,8 @@ export const useStore = create<AppState>((set, get) => ({
   setMobileTab: (tab) => set({ mobileTab: tab }),
 
   setFilteredIds: (ids) => set({ filteredIds: ids }),
+
+  setAiChatMessages: (messages) => set({ aiChatMessages: messages }),
 
   setUserName: (user, name) => {
     if (user === 'user1') {
