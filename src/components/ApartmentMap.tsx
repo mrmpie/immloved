@@ -72,15 +72,27 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
   // Initialize map
   useEffect(() => {
+    // Only initialize when map is visible
+    if (!isMapVisible) return;
+    
+    let retryCount = 0;
+    const maxRetries = 10;
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     const initializeMap = () => {
       if (!containerRef.current || mapRef.current) return;
 
       // Check if container has valid dimensions
       const rect = containerRef.current.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) {
-        console.warn('Map container has zero dimensions, delaying initialization');
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          console.error('Map container still has zero dimensions after maximum retries, giving up');
+          return;
+        }
+        console.warn(`Map container has zero dimensions, delaying initialization (attempt ${retryCount}/${maxRetries})`);
         // Try again after a delay, especially for mobile
-        const timer = setTimeout(() => {
+        timeoutId = setTimeout(() => {
           initializeMap();
         }, isMobile ? 1000 : 500); // Longer delay for mobile
         return;
@@ -136,8 +148,11 @@ export default function ApartmentMap({ allApartments }: ApartmentMapProps) {
 
     return () => {
       resizeObserver.disconnect();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, [isMobile]);
+  }, [isMobile, isMapVisible]);
 
   // Geocode apartments missing coordinates
   useEffect(() => {
