@@ -77,13 +77,13 @@ export async function POST(req: NextRequest) {
     }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.4',
       messages: [
         { role: 'system', content: systemContent },
         ...messages,
       ],
       temperature: 0.7,
-      max_tokens: 4000,
+      max_completion_tokens: 4000,
     });
 
     const reply = response.choices[0]?.message?.content || 'No response generated.';

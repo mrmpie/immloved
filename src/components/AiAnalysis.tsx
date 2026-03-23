@@ -617,7 +617,7 @@ export default function AiAnalysis() {
           </div>
 
           <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-            Uses GPT-4o-mini · Your apartment data is sent to OpenAI for analysis
+            Uses GPT-5.4 · Your apartment data is sent to OpenAI for analysis
           </p>
         </div>
       </div>
