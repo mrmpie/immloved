@@ -95,6 +95,48 @@ body {
   color: #94a3b8; /* Filled filtered star color */
 }
 
+/* Apartment table */
+.apartment-table-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.apartment-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.apartment-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.apartment-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.apartment-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.apartment-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.apartment-table thead tr:first-child th {
+  top: 0;
+}
+
+.apartment-table thead tr:nth-child(2) th {
+  top: 29px;
+}
+
+.apartment-table tbody tr:hover td {
+  background: inherit;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
