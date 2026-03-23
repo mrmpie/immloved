@@ -36,8 +36,8 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
   // Per-column filters
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   // Table sort (independent from global sort)
-  const [tableSortKey, setTableSortKey] = useState<string | null>(null);
-  const [tableSortDir, setTableSortDir] = useState<'asc' | 'desc'>('asc');
+  const [tableSortKey, setTableSortKey] = useState<string>('price');
+  const [tableSortDir, setTableSortDir] = useState<'asc' | 'desc'>('desc');
 
   const selectedRowRef = useRef<HTMLTableRowElement>(null);
 
@@ -370,7 +370,6 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
 
   // 3) Apply table-level sorting
   const sorted = useMemo(() => {
-    if (!tableSortKey) return columnFiltered;
     const col = columns.find((c) => c.key === tableSortKey);
     if (!col) return columnFiltered;
 
@@ -390,16 +389,15 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
 
   // Handle column header click for sorting
   const handleSort = useCallback((key: string) => {
-    setTableSortKey((prev) => {
-      if (prev === key) {
-        // Toggle direction
-        setTableSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-        return key;
-      }
+    if (tableSortKey === key) {
+      // Same column - toggle direction
+      setTableSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Different column - set new key and reset to ascending
+      setTableSortKey(key);
       setTableSortDir('asc');
-      return key;
-    });
-  }, []);
+    }
+  }, [tableSortKey]);
 
   // Handle column filter change
   const handleColumnFilter = useCallback((key: string, value: string) => {
