@@ -182,6 +182,9 @@ export const useStore = create<AppState>((set, get) => ({
             a.id === id ? { ...a, ...updates, updated_at: new Date().toISOString() } : a
           ),
         }));
+      } else {
+        console.error('Supabase update failed:', error);
+        throw new Error(error.message || 'Failed to update apartment');
       }
     } else {
       const all = loadFromLocalStorage();

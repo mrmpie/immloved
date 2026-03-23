@@ -29,7 +29,10 @@ import {
   Footprints,
   Loader2,
   RefreshCw,
+  Languages,
 } from 'lucide-react';
+import { translateText, TRANSLATABLE_FIELDS } from '@/lib/translate';
+import { Apartment as ApartmentType } from '@/lib/types';
 
 interface ApartmentCardProps {
   apartment: Apartment;
@@ -57,6 +60,7 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
   const [viewerIndex, setViewerIndex] = useState(0);
   const [calculatingHbf, setCalculatingHbf] = useState(false);
   const [updatingFromUrl, setUpdatingFromUrl] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   const apt = apartment;
 
@@ -211,6 +215,42 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
     updateApartment(apt.id, { [field]: val } as Partial<Apartment>);
     setEditingField(null);
   };
+
+  const handleTranslateApartment = async () => {
+    if (translating) return;
+    setTranslating(true);
+    try {
+      const updates: Partial<ApartmentType> = {};
+      let anyDone = false;
+      for (const [src, tgt] of TRANSLATABLE_FIELDS) {
+        const srcVal = apt[src as keyof ApartmentType] as string | null;
+        const tgtVal = apt[tgt as keyof ApartmentType] as string | null;
+        if (srcVal && srcVal.trim() !== '' && (tgtVal == null || tgtVal.trim() === '')) {
+          try {
+            const result = await translateText(srcVal);
+            if (result) {
+              (updates as Record<string, string>)[tgt] = result;
+              anyDone = true;
+            }
+          } catch { /* skip */ }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
+      if (anyDone && Object.keys(updates).length > 0) {
+        await updateApartment(apt.id, updates);
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const needsTranslation = TRANSLATABLE_FIELDS.some(([src, tgt]) => {
+    const srcVal = apt[src as keyof ApartmentType] as string | null;
+    const tgtVal = apt[tgt as keyof ApartmentType] as string | null;
+    return srcVal && srcVal.trim() !== '' && (tgtVal == null || tgtVal.trim() === '');
+  });
 
   const handleUpdateFromUrl = async () => {
     if (!apt.url) return;
@@ -820,6 +860,24 @@ const ApartmentCard = forwardRef<HTMLDivElement, ApartmentCardProps>(
                           )}
                         </button>
                       </>
+                    )}
+                    {needsTranslation && (
+                      <button
+                        onClick={handleTranslateApartment}
+                        disabled={translating}
+                        className="flex items-center gap-1 rounded bg-violet-100 px-2 py-1 text-[10px] font-medium text-violet-700 hover:bg-violet-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Translate German texts to English"
+                      >
+                        {translating ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />Translating...
+                          </>
+                        ) : (
+                          <>
+                            <Languages className="h-3 w-3" />Translate
+                          </>
+                        )}
+                      </button>
                     )}
                     {showRestore ? (
                       <button onClick={() => restoreApartment(apt.id)} className="flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-200">

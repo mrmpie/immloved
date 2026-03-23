@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { extractImmoscoutId } from '@/lib/utils';
 import { ApartmentInsert } from '@/lib/types';
-import { Plus, Link, X } from 'lucide-react';
+import { Plus, Link, X, Languages, Loader2 } from 'lucide-react';
+import { translateText, TRANSLATABLE_FIELDS } from '@/lib/translate';
+import { Apartment } from '@/lib/types';
 
 export default function AddApartmentDialog() {
   const [open, setOpen] = useState(false);
@@ -16,7 +18,8 @@ export default function AddApartmentDialog() {
   const [rooms, setRooms] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { addApartment } = useStore();
+  const [status, setStatus] = useState<string | null>(null);
+  const { addApartment, updateApartment } = useStore();
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -112,13 +115,59 @@ export default function AddApartmentDialog() {
         zone_rating: null,
       };
 
+      // Translate title before inserting
+      if (apt.title) {
+        setStatus('Translating title...');
+        try {
+          const translated = await translateText(apt.title);
+          if (translated) {
+            (apt as Record<string, unknown>).title_en = translated;
+          }
+        } catch { /* continue without translation */ }
+      }
+
+      setStatus('Adding apartment...');
       await addApartment(apt);
+
+      // Background-translate remaining fields for the newly added apartment
+      const freshApartments = useStore.getState().apartments;
+      const added = freshApartments.find(a =>
+        (immoscoutId && a.immoscout_id === immoscoutId) ||
+        (apt.url && a.url === apt.url) ||
+        (apt.title && a.title === apt.title)
+      );
+      if (added) {
+        // Fire-and-forget background translation
+        (async () => {
+          const updates: Partial<Apartment> = {};
+          let anyDone = false;
+          for (const [src, tgt] of TRANSLATABLE_FIELDS) {
+            const srcVal = added[src as keyof Apartment] as string | null;
+            const tgtVal = added[tgt as keyof Apartment] as string | null;
+            if (srcVal && srcVal.trim() !== '' && (tgtVal == null || tgtVal.trim() === '')) {
+              try {
+                const result = await translateText(srcVal);
+                if (result) {
+                  (updates as Record<string, string>)[tgt] = result;
+                  anyDone = true;
+                }
+              } catch { /* skip */ }
+              await new Promise((r) => setTimeout(r, 500));
+            }
+          }
+          if (anyDone && Object.keys(updates).length > 0) {
+            await updateApartment(added.id, updates);
+          }
+        })();
+      }
+
       setUrl('');
       setTitle('');
       setAddress('');
       setPrice('');
       setArea('');
       setRooms('');
+      setStatus(null);
       setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add apartment');
@@ -242,7 +291,7 @@ export default function AddApartmentDialog() {
             disabled={loading}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Adding...' : 'Add to Favorites'}
+            {loading ? (status || 'Adding...') : 'Add to Favorites'}
           </button>
         </div>
       </div>
