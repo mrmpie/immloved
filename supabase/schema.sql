@@ -135,3 +135,31 @@ create policy "Allow all access" on apartments
   for all
   using (true)
   with check (true);
+
+-- User settings table (stores user names, column order, preferences)
+create table if not exists user_settings (
+  id text primary key default 'default',
+  user_name1 text not null default 'Maria',
+  user_name2 text not null default 'Rodrigo',
+  table_column_order jsonb, -- array of column keys, e.g. ["title","price","area"]
+  table_map_position text not null default 'right' check (table_map_position in ('right', 'below')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Trigger for updated_at
+create trigger user_settings_updated_at
+  before update on user_settings
+  for each row
+  execute function update_updated_at();
+
+-- RLS
+alter table user_settings enable row level security;
+
+create policy "Allow all access to user_settings" on user_settings
+  for all
+  using (true)
+  with check (true);
+
+-- Insert default row
+insert into user_settings (id) values ('default') on conflict do nothing;

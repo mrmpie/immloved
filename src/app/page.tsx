@@ -7,7 +7,7 @@ import FilterBar from '@/components/FilterBar';
 import ApartmentList from '@/components/ApartmentList';
 import ApartmentTable from '@/components/ApartmentTable';
 import AddApartmentDialog from '@/components/AddApartmentDialog';
-import { Map, List, ChevronDown, ChevronUp, Table2, PanelBottomClose, PanelBottomOpen, GripHorizontal } from 'lucide-react';
+import { Map, List, ChevronDown, ChevronUp, Table2, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, GripHorizontal } from 'lucide-react';
 
 const ApartmentMap = dynamic(() => import('@/components/ApartmentMap'), {
   ssr: false,
@@ -19,31 +19,40 @@ const ApartmentMap = dynamic(() => import('@/components/ApartmentMap'), {
 });
 
 type ViewMode = 'list' | 'table';
+type TableMapPosition = 'right' | 'below';
 
 export default function FavoritesPage() {
-  const { apartments, fetchApartments, loading, mobileTab, setMobileTab } = useStore();
+  const { apartments, fetchApartments, fetchUserSettings, loading, mobileTab, setMobileTab, tableMapPosition, setTableMapPosition } = useStore();
   const [hydrated, setHydrated] = useState(false);
   const [filterBarExpanded, setFilterBarExpanded] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   // Table-mode map split
   const [tableMapVisible, setTableMapVisible] = useState(true);
-  const [tableMapHeight, setTableMapHeight] = useState(300); // px
+  const [tableMapSize, setTableMapSize] = useState(300); // px - height on mobile, width on desktop
+  const [isDesktop, setIsDesktop] = useState(false);
   const isDraggingRef = useRef(false);
-  const dragStartYRef = useRef(0);
-  const dragStartHeightRef = useRef(0);
+  const dragStartPosRef = useRef(0);
+  const dragStartSizeRef = useRef(0);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  // Set filter bar expanded state based on screen size
+  // Set filter bar expanded state and detect desktop
   useEffect(() => {
-    const isMobile = window.innerWidth < 768; // md breakpoint
-    setFilterBarExpanded(!isMobile);
+    const checkSize = () => {
+      const isMobile = window.innerWidth < 768;
+      setFilterBarExpanded(!isMobile);
+      setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+    };
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    return () => window.removeEventListener('resize', checkSize);
   }, []);
 
   useEffect(() => {
     setHydrated(true);
     fetchApartments();
-  }, [fetchApartments]);
+    fetchUserSettings();
+  }, [fetchApartments, fetchUserSettings]);
 
   // Auto-fetch thumbnails for apartments that have a URL but no thumbnail
   useEffect(() => {
@@ -98,37 +107,51 @@ export default function FavoritesPage() {
     return () => { cancelled = true; };
   }, [apartments.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Drag handle for resizing map in table mode
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
+  // Drag handle for resizing map in table mode (supports mouse + touch)
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     isDraggingRef.current = true;
-    dragStartYRef.current = e.clientY;
-    dragStartHeightRef.current = tableMapHeight;
-    document.body.style.cursor = 'row-resize';
+    const pos = 'touches' in e ? e.touches[0] : e;
+    dragStartPosRef.current = isDesktop && tableMapPosition === 'right' ? pos.clientX : pos.clientY;
+    dragStartSizeRef.current = tableMapSize;
+    document.body.style.cursor = isDesktop && tableMapPosition === 'right' ? 'col-resize' : 'row-resize';
     document.body.style.userSelect = 'none';
-  }, [tableMapHeight]);
+  }, [tableMapSize, isDesktop, tableMapPosition]);
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (e: MouseEvent | TouchEvent) => {
       if (!isDraggingRef.current) return;
-      const delta = dragStartYRef.current - e.clientY;
-      const newHeight = Math.max(100, Math.min(600, dragStartHeightRef.current + delta));
-      setTableMapHeight(newHeight);
+      const pos = 'touches' in e ? e.touches[0] : e;
+      if (isDesktop && tableMapPosition === 'right') {
+        // Horizontal: dragging left makes map wider
+        const delta = dragStartPosRef.current - pos.clientX;
+        const newWidth = Math.max(200, Math.min(800, dragStartSizeRef.current + delta));
+        setTableMapSize(newWidth);
+      } else {
+        // Vertical: dragging up makes map taller
+        const delta = dragStartPosRef.current - pos.clientY;
+        const newHeight = Math.max(100, Math.min(600, dragStartSizeRef.current + delta));
+        setTableMapSize(newHeight);
+      }
     };
-    const handleMouseUp = () => {
+    const handleEnd = () => {
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
       }
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
     };
-  }, []);
+  }, [isDesktop, tableMapPosition]);
 
   if (!hydrated) return null;
 
@@ -262,7 +285,10 @@ export default function FavoritesPage() {
 
       {/* ===== TABLE VIEW MODE ===== */}
       {viewMode === 'table' && (
-        <div className="flex-1 flex flex-col overflow-hidden" ref={splitContainerRef}>
+        <div
+          className={`flex-1 flex overflow-hidden ${isDesktop && tableMapPosition === 'right' ? 'flex-row' : 'flex-col'}`}
+          ref={splitContainerRef}
+        >
           {/* Table panel */}
           <div className="flex-1 overflow-hidden">
             {loading ? (
@@ -274,45 +300,95 @@ export default function FavoritesPage() {
             )}
           </div>
 
-          {/* Drag handle + map toggle */}
-          <div className="shrink-0 border-t border-border bg-muted/50 flex items-center justify-between px-3">
-            <button
-              onClick={() => setTableMapVisible(!tableMapVisible)}
-              className="flex items-center gap-1.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-              title={tableMapVisible ? 'Hide map' : 'Show map'}
-            >
-              {tableMapVisible ? (
-                <>
-                  <PanelBottomClose className="h-3.5 w-3.5" />
-                  Hide Map
-                </>
-              ) : (
-                <>
-                  <PanelBottomOpen className="h-3.5 w-3.5" />
-                  Show Map
-                </>
-              )}
-            </button>
-
-            {tableMapVisible && (
-              <div
-                className="flex items-center gap-1 py-1 cursor-row-resize select-none text-muted-foreground hover:text-foreground transition-colors"
-                onMouseDown={handleDragStart}
-                title="Drag to resize map"
-              >
-                <GripHorizontal className="h-4 w-4" />
-                <span className="text-[10px]">Drag to resize</span>
-              </div>
-            )}
-          </div>
-
-          {/* Map panel (below table) */}
+          {/* Map panel (right on desktop, below on mobile) */}
           {tableMapVisible && (
             <div
-              className="shrink-0 p-2"
-              style={{ height: tableMapHeight }}
+              className={`shrink-0 overflow-hidden ${isDesktop && tableMapPosition === 'right' ? 'border-l border-border' : 'border-t border-border'}`}
+              style={isDesktop && tableMapPosition === 'right' ? { width: tableMapSize } : { height: tableMapSize }}
             >
-              <ApartmentMap allApartments={apartments} />
+              <div className="flex h-full flex-col bg-white">
+                <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setTableMapVisible(false)}
+                      className="flex items-center gap-1.5 rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      title="Hide map"
+                    >
+                      {isDesktop && tableMapPosition === 'right' ? (
+                        <PanelRightClose className="h-3.5 w-3.5" />
+                      ) : (
+                        <PanelBottomClose className="h-3.5 w-3.5" />
+                      )}
+                      <span>Hide</span>
+                    </button>
+
+                    {isDesktop && (
+                      <div className="flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5">
+                        <button
+                          onClick={() => setTableMapPosition('right')}
+                          className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                            tableMapPosition === 'right'
+                              ? 'bg-white text-primary shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                          title="Place map on the right"
+                        >
+                          Right
+                        </button>
+                        <button
+                          onClick={() => setTableMapPosition('below')}
+                          className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                            tableMapPosition === 'below'
+                              ? 'bg-white text-primary shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                          title="Place map below"
+                        >
+                          Below
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    className={`flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-muted-foreground transition-colors hover:text-foreground touch-none ${
+                      isDesktop && tableMapPosition === 'right' ? 'cursor-col-resize' : 'cursor-row-resize'
+                    }`}
+                    onMouseDown={handleDragStart}
+                    onTouchStart={handleDragStart}
+                    title="Drag to resize map"
+                  >
+                    <GripHorizontal className={`${isDesktop && tableMapPosition === 'right' ? 'h-4 w-4 rotate-90' : 'h-4 w-4'}`} />
+                    <span className="text-[10px]">Resize</span>
+                  </div>
+                </div>
+
+                <div className="min-h-0 flex-1 p-2">
+                  <ApartmentMap allApartments={apartments} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!tableMapVisible && (
+            <div className={`shrink-0 ${isDesktop && tableMapPosition === 'right' ? 'border-l border-border' : 'border-t border-border'} bg-white px-3 py-2`}>
+              <button
+                onClick={() => setTableMapVisible(true)}
+                className="flex items-center gap-1.5 rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                title="Show map"
+              >
+                {isDesktop && tableMapPosition === 'right' ? (
+                  <>
+                    <PanelRightOpen className="h-3.5 w-3.5" />
+                    <span>Show Map</span>
+                  </>
+                ) : (
+                  <>
+                    <PanelBottomOpen className="h-3.5 w-3.5" />
+                    <span>Show Map</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>

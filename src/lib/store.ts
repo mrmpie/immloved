@@ -13,6 +13,8 @@ interface AppState {
   mobileTab: 'list' | 'map';
   userName1: string;
   userName2: string;
+  tableColumnOrder: string[] | null;
+  tableMapPosition: 'right' | 'below';
   aiChatMessages: { role: 'user' | 'assistant'; content: string }[];
 
   // Actions
@@ -22,6 +24,9 @@ interface AppState {
   setFilteredIds: (ids: Set<string> | null) => void;
   setMobileTab: (tab: 'list' | 'map') => void;
   setUserName: (user: 'user1' | 'user2', name: string) => void;
+  setTableColumnOrder: (order: string[]) => void;
+  setTableMapPosition: (position: 'right' | 'below') => void;
+  fetchUserSettings: () => Promise<void>;
   fetchApartments: () => Promise<void>;
   fetchRemovedApartments: () => Promise<void>;
   addApartment: (apt: ApartmentInsert) => Promise<void>;
@@ -61,6 +66,8 @@ export const useStore = create<AppState>((set, get) => ({
   mobileTab: 'list',
   userName1: typeof window !== 'undefined' ? localStorage.getItem('immloved_userName1') || 'Maria' : 'Maria',
   userName2: typeof window !== 'undefined' ? localStorage.getItem('immloved_userName2') || 'Rodrigo' : 'Rodrigo',
+  tableColumnOrder: null,
+  tableMapPosition: typeof window !== 'undefined' ? (localStorage.getItem('immloved_tableMapPosition') as 'right' | 'below') || 'right' : 'right',
   aiChatMessages: [],
 
   setFilters: (filters) =>
@@ -83,6 +90,67 @@ export const useStore = create<AppState>((set, get) => ({
     } else {
       localStorage.setItem('immloved_userName2', name);
       set({ userName2: name });
+    }
+    // Persist to Supabase
+    if (isSupabaseConfigured() && supabase) {
+      const field = user === 'user1' ? 'user_name1' : 'user_name2';
+      supabase.from('user_settings').update({ [field]: name }).eq('id', 'default').then();
+    }
+  },
+
+  setTableColumnOrder: (order) => {
+    set({ tableColumnOrder: order });
+    localStorage.setItem('immloved_tableColumnOrder', JSON.stringify(order));
+    // Persist to Supabase
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('user_settings').update({ table_column_order: order }).eq('id', 'default').then();
+    }
+  },
+
+  setTableMapPosition: (position) => {
+    set({ tableMapPosition: position });
+    localStorage.setItem('immloved_tableMapPosition', position);
+    // Persist to Supabase
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('user_settings').update({ table_map_position: position }).eq('id', 'default').then();
+    }
+  },
+
+  fetchUserSettings: async () => {
+    if (isSupabaseConfigured() && supabase) {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('id', 'default')
+        .single();
+      if (!error && data) {
+        const updates: Partial<AppState> = {};
+        if (data.user_name1) {
+          updates.userName1 = data.user_name1;
+          localStorage.setItem('immloved_userName1', data.user_name1);
+        }
+        if (data.user_name2) {
+          updates.userName2 = data.user_name2;
+          localStorage.setItem('immloved_userName2', data.user_name2);
+        }
+        if (data.table_column_order) {
+          updates.tableColumnOrder = data.table_column_order;
+          localStorage.setItem('immloved_tableColumnOrder', JSON.stringify(data.table_column_order));
+        }
+        if (data.table_map_position) {
+          updates.tableMapPosition = data.table_map_position;
+          localStorage.setItem('immloved_tableMapPosition', data.table_map_position);
+        }
+        set(updates);
+      }
+    } else {
+      // Load from localStorage
+      try {
+        const order = localStorage.getItem('immloved_tableColumnOrder');
+        if (order) set({ tableColumnOrder: JSON.parse(order) });
+        const position = localStorage.getItem('immloved_tableMapPosition');
+        if (position) set({ tableMapPosition: position as 'right' | 'below' });
+      } catch { /* ignore */ }
     }
   },
 

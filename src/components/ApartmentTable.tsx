@@ -5,7 +5,7 @@ import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { applyFilters } from '@/lib/filters';
 import { formatPrice, formatPricePerM2 } from '@/lib/utils';
-import { ArrowUp, ArrowDown, ArrowUpDown, Check, Star } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, Check, Star, GripVertical, Settings, X } from 'lucide-react';
 
 // Column definition
 interface ColumnDef {
@@ -31,6 +31,8 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
     setFilteredIds,
     userName1,
     userName2,
+    tableColumnOrder,
+    setTableColumnOrder,
   } = useStore();
 
   // Per-column filters
@@ -38,8 +40,14 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
   // Table sort (independent from global sort)
   const [tableSortKey, setTableSortKey] = useState<string>('price');
   const [tableSortDir, setTableSortDir] = useState<'asc' | 'desc'>('desc');
+  // Column settings panel
+  const [showColumnSettings, setShowColumnSettings] = useState(false);
+  // Drag reorder state
+  const [draggedCol, setDraggedCol] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
   const selectedRowRef = useRef<HTMLTableRowElement>(null);
+  const prevSelectedIdRef = useRef<string | null>(null);
 
   // Column definitions
   const columns: ColumnDef[] = useMemo(() => [
@@ -336,7 +344,81 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       width: 140,
       getValue: (a) => a.contact_company || '',
     },
+    {
+      key: 'user1_comment',
+      label: `${userName1} Comment`,
+      width: 200,
+      getValue: (a) => a.user1_comment || '',
+      renderCell: (a) => {
+        const text = a.user1_comment || '';
+        return (
+          <span className="line-clamp-2 text-muted-foreground" title={text}>
+            {text || '—'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'user2_comment',
+      label: `${userName2} Comment`,
+      width: 200,
+      getValue: (a) => a.user2_comment || '',
+      renderCell: (a) => {
+        const text = a.user2_comment || '';
+        return (
+          <span className="line-clamp-2 text-muted-foreground" title={text}>
+            {text || '—'}
+          </span>
+        );
+      },
+    },
   ], [userName1, userName2]);
+
+  // Ordered columns based on saved order
+  const orderedColumns = useMemo(() => {
+    if (!tableColumnOrder || tableColumnOrder.length === 0) return columns;
+    const colMap = new Map(columns.map((c) => [c.key, c]));
+    const ordered: ColumnDef[] = [];
+    for (const key of tableColumnOrder) {
+      const col = colMap.get(key);
+      if (col) {
+        ordered.push(col);
+        colMap.delete(key);
+      }
+    }
+    // Append any new columns not in saved order
+    for (const col of colMap.values()) {
+      ordered.push(col);
+    }
+    return ordered;
+  }, [columns, tableColumnOrder]);
+
+  // Column reorder handlers
+  const handleColumnDragStart = useCallback((key: string) => {
+    setDraggedCol(key);
+  }, []);
+
+  const handleColumnDragOver = useCallback((key: string) => {
+    setDragOverCol(key);
+  }, []);
+
+  const handleColumnDrop = useCallback((targetKey: string) => {
+    if (!draggedCol || draggedCol === targetKey) {
+      setDraggedCol(null);
+      setDragOverCol(null);
+      return;
+    }
+    const currentOrder = orderedColumns.map((c) => c.key);
+    const fromIdx = currentOrder.indexOf(draggedCol);
+    const toIdx = currentOrder.indexOf(targetKey);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const newOrder = [...currentOrder];
+    newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, draggedCol);
+    setTableColumnOrder(newOrder);
+    setDraggedCol(null);
+    setDragOverCol(null);
+  }, [draggedCol, orderedColumns, setTableColumnOrder]);
 
   // 1) Apply global filters
   const globalFiltered = useMemo(
@@ -356,7 +438,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
     let result = globalFiltered;
     for (const [colKey, filterText] of Object.entries(columnFilters)) {
       if (!filterText.trim()) continue;
-      const col = columns.find((c) => c.key === colKey);
+      const col = orderedColumns.find((c) => c.key === colKey);
       if (!col) continue;
       const q = filterText.toLowerCase();
       result = result.filter((apt) => {
@@ -366,11 +448,11 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       });
     }
     return result;
-  }, [globalFiltered, columnFilters, columns]);
+  }, [globalFiltered, columnFilters, orderedColumns]);
 
   // 3) Apply table-level sorting
   const sorted = useMemo(() => {
-    const col = columns.find((c) => c.key === tableSortKey);
+    const col = orderedColumns.find((c) => c.key === tableSortKey);
     if (!col) return columnFiltered;
 
     const getSortVal = col.sortValue || col.getValue;
@@ -385,7 +467,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
       return String(av).localeCompare(String(bv)) * dir;
     });
-  }, [columnFiltered, tableSortKey, tableSortDir, columns]);
+  }, [columnFiltered, tableSortKey, tableSortDir, orderedColumns]);
 
   // Handle column header click for sorting
   const handleSort = useCallback((key: string) => {
@@ -416,11 +498,17 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
     [selectedApartmentId, setSelectedApartment, setCenterMapApartment]
   );
 
-  // Scroll selected row into view
+  // Scroll selected row into view when selection changes (e.g. from map marker click)
   useEffect(() => {
-    if (selectedRowRef.current) {
-      selectedRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (selectedApartmentId && selectedApartmentId !== prevSelectedIdRef.current) {
+      // Small delay to ensure the DOM has updated with the new selection
+      setTimeout(() => {
+        if (selectedRowRef.current) {
+          selectedRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
     }
+    prevSelectedIdRef.current = selectedApartmentId;
   }, [selectedApartmentId]);
 
   if (sorted.length === 0 && apartments.length === 0) {
@@ -435,15 +523,63 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="text-xs text-muted-foreground px-2 py-1.5 border-b border-border bg-white shrink-0">
-        Showing {sorted.length} of {apartments.length} apartments
+      <div className="text-xs text-muted-foreground px-2 py-1.5 border-b border-border bg-white shrink-0 flex items-center justify-between">
+        <span>Showing {sorted.length} of {apartments.length} apartments</span>
+        <button
+          onClick={() => setShowColumnSettings(!showColumnSettings)}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+            showColumnSettings ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+          }`}
+          title="Customize columns"
+        >
+          <Settings className="h-3 w-3" />
+          <span className="hidden sm:inline">Columns</span>
+        </button>
       </div>
+
+      {/* Column settings panel */}
+      {showColumnSettings && (
+        <div className="border-b border-border bg-muted/30 px-3 py-2 shrink-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-muted-foreground">Drag columns to reorder</span>
+            <button
+              onClick={() => setShowColumnSettings(false)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {orderedColumns.map((col) => (
+              <div
+                key={col.key}
+                draggable
+                onDragStart={() => handleColumnDragStart(col.key)}
+                onDragOver={(e) => { e.preventDefault(); handleColumnDragOver(col.key); }}
+                onDrop={() => handleColumnDrop(col.key)}
+                onDragEnd={() => { setDraggedCol(null); setDragOverCol(null); }}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium cursor-grab active:cursor-grabbing border transition-colors ${
+                  draggedCol === col.key
+                    ? 'opacity-50 border-primary bg-primary/10'
+                    : dragOverCol === col.key
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border bg-white hover:border-primary/50'
+                }`}
+              >
+                <GripVertical className="h-3 w-3 text-muted-foreground" />
+                {col.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-auto apartment-table-wrapper">
         <table className="apartment-table w-full border-collapse text-xs">
           <thead className="sticky top-0 z-10">
             {/* Header labels */}
             <tr className="bg-muted/80 backdrop-blur-sm">
-              {columns.map((col) => (
+              {orderedColumns.map((col) => (
                 <th
                   key={col.key}
                   className="border-b border-r border-border px-2 py-1.5 font-semibold text-muted-foreground cursor-pointer hover:bg-muted select-none whitespace-nowrap"
@@ -467,7 +603,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
             </tr>
             {/* Column filter inputs */}
             <tr className="bg-white border-b border-border">
-              {columns.map((col) => (
+              {orderedColumns.map((col) => (
                 <th key={`filter-${col.key}`} className="px-1 py-1 border-r border-border">
                   <input
                     type="text"
@@ -496,7 +632,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
                   }`}
                   onClick={() => handleRowClick(apt)}
                 >
-                  {columns.map((col) => (
+                  {orderedColumns.map((col) => (
                     <td
                       key={col.key}
                       className="border-b border-r border-border px-2 py-1.5"
