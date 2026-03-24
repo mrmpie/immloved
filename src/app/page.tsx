@@ -322,6 +322,18 @@ export default function FavoritesPage() {
                       <span>Hide</span>
                     </button>
 
+                    <div
+                      className={`flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-muted-foreground transition-colors hover:text-foreground touch-none ${
+                        isDesktop && tableMapPosition === 'right' ? 'cursor-col-resize' : 'cursor-row-resize'
+                      }`}
+                      onMouseDown={handleDragStart}
+                      onTouchStart={handleDragStart}
+                      title="Drag to resize map"
+                    >
+                      <GripHorizontal className={`${isDesktop && tableMapPosition === 'right' ? 'h-4 w-4 rotate-90' : 'h-4 w-4'}`} />
+                      <span className="text-[10px]">Resize</span>
+                    </div>
+
                     {isDesktop && (
                       <div className="flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5">
                         <button
@@ -348,18 +360,6 @@ export default function FavoritesPage() {
                         </button>
                       </div>
                     )}
-                  </div>
-
-                  <div
-                    className={`flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-muted-foreground transition-colors hover:text-foreground touch-none ${
-                      isDesktop && tableMapPosition === 'right' ? 'cursor-col-resize' : 'cursor-row-resize'
-                    }`}
-                    onMouseDown={handleDragStart}
-                    onTouchStart={handleDragStart}
-                    title="Drag to resize map"
-                  >
-                    <GripHorizontal className={`${isDesktop && tableMapPosition === 'right' ? 'h-4 w-4 rotate-90' : 'h-4 w-4'}`} />
-                    <span className="text-[10px]">Resize</span>
                   </div>
                 </div>
 

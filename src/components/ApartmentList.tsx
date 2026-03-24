@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { applyFilters } from '@/lib/filters';
@@ -13,6 +13,8 @@ interface ApartmentListProps {
 
 export default function ApartmentList({ apartments, showRestore = false }: ApartmentListProps) {
   const { filters, selectedApartmentId, setSelectedApartment, setFilteredIds } = useStore();
+  const selectedCardRef = useRef<HTMLDivElement>(null);
+  const prevSelectedIdRef = useRef<string | null>(null);
 
   const filtered = useMemo(
     () => applyFilters(apartments, filters),
@@ -25,6 +27,17 @@ export default function ApartmentList({ apartments, showRestore = false }: Apart
     setFilteredIds(ids);
     return () => setFilteredIds(null);
   }, [filtered, setFilteredIds]);
+
+  useEffect(() => {
+    if (selectedApartmentId && selectedApartmentId !== prevSelectedIdRef.current) {
+      setTimeout(() => {
+        if (selectedCardRef.current) {
+          selectedCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+    }
+    prevSelectedIdRef.current = selectedApartmentId;
+  }, [selectedApartmentId]);
 
   if (filtered.length === 0) {
     return (
@@ -48,6 +61,7 @@ export default function ApartmentList({ apartments, showRestore = false }: Apart
       {filtered.map((apt) => (
         <ApartmentCard
           key={apt.id}
+          ref={apt.id === selectedApartmentId ? selectedCardRef : undefined}
           apartment={apt}
           isSelected={apt.id === selectedApartmentId}
           onSelect={() =>
