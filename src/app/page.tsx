@@ -36,16 +36,19 @@ export default function FavoritesPage() {
   const dragStartSizeRef = useRef(0);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  // Set filter bar expanded state and detect desktop
+  // Set initial filter bar state and detect desktop
   useEffect(() => {
-    const checkSize = () => {
-      const isMobile = window.innerWidth < 768;
-      setFilterBarExpanded(!isMobile);
+    const isMobile = window.innerWidth < 768;
+    setFilterBarExpanded(!isMobile);
+    setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+  }, []);
+
+  useEffect(() => {
+    const checkDesktop = () => {
       setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
     };
-    checkSize();
-    window.addEventListener('resize', checkSize);
-    return () => window.removeEventListener('resize', checkSize);
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
   useEffect(() => {
