@@ -5,7 +5,40 @@ import { Apartment } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { applyFilters } from '@/lib/filters';
 import { formatPrice, formatPricePerM2 } from '@/lib/utils';
-import { ArrowUp, ArrowDown, ArrowUpDown, Check, Star, GripVertical, Settings, X } from 'lucide-react';
+import { useSpreadsheetStore, evaluateFormula, CustomColumn } from '@/lib/spreadsheet-store';
+import { ArrowUp, ArrowDown, ArrowUpDown, Check, Star, GripVertical, Settings, X, Plus, Trash2, Palette } from 'lucide-react';
+
+// Map of column keys to their corresponding Apartment field for Supabase sync
+const APARTMENT_FIELD_MAP: Record<string, keyof Apartment> = {
+  title: 'title',
+  price: 'price',
+  area: 'area',
+  rooms: 'rooms',
+  bathrooms: 'bathrooms',
+  floor: 'floor',
+  hausgeld: 'hausgeld',
+  district: 'district',
+  address: 'address',
+  pros: 'pros',
+  cons: 'cons',
+  rating: 'preference_rating',
+  type: 'type',
+  condition: 'condition',
+  year_built: 'year_built',
+  available_from: 'available_from',
+  heating: 'heating',
+  elevator: 'elevator',
+  parking: 'parking',
+  deposit: 'deposit',
+  agency_fee: 'agency_fee',
+  contact_name: 'contact_name',
+  contact_company: 'contact_company',
+  user1_comment: 'user1_comment',
+  user2_comment: 'user2_comment',
+};
+
+// Numeric apartment fields (parse as number when editing)
+const NUMERIC_APT_FIELDS = new Set(['price', 'area', 'rooms', 'bathrooms', 'hausgeld', 'rating']);
 
 // Column definition
 interface ColumnDef {
@@ -16,6 +49,9 @@ interface ColumnDef {
   renderCell?: (apt: Apartment) => React.ReactNode;
   sortValue?: (apt: Apartment) => number | string | null;
   align?: 'left' | 'center' | 'right';
+  editable?: boolean;
+  isCustom?: boolean;
+  customColumn?: CustomColumn;
 }
 
 interface ApartmentTableProps {
@@ -33,7 +69,20 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
     userName2,
     tableColumnOrder,
     setTableColumnOrder,
+    updateApartment,
   } = useStore();
+
+  const {
+    customColumns,
+    cells: spreadsheetCells,
+    cellColors,
+    loaded: spreadsheetLoaded,
+    fetchSpreadsheet,
+    updateCell: updateSpreadsheetCell,
+    setCellColor,
+    addColumn,
+    removeColumn,
+  } = useSpreadsheetStore();
 
   // Per-column filters
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
@@ -46,8 +95,27 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<{ aptId: string; colKey: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Color picker state
+  const [colorPickerCell, setColorPickerCell] = useState<{ aptId: string; colKey: string; x: number; y: number } | null>(null);
+
+  // New column dialog
+  const [showNewColumnDialog, setShowNewColumnDialog] = useState(false);
+  const [newColLabel, setNewColLabel] = useState('');
+  const [newColType, setNewColType] = useState<'text' | 'number' | 'formula'>('text');
+  const [newColFormula, setNewColFormula] = useState('');
+
   const selectedRowRef = useRef<HTMLTableRowElement>(null);
   const prevSelectedIdRef = useRef<string | null>(null);
+
+  // Load spreadsheet data on mount
+  useEffect(() => {
+    if (!spreadsheetLoaded) fetchSpreadsheet();
+  }, [spreadsheetLoaded, fetchSpreadsheet]);
 
   // Column definitions
   const columns: ColumnDef[] = useMemo(() => [
@@ -61,6 +129,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
           {a.title_en || a.title || '—'}
         </span>
       ),
+      editable: true,
     },
     {
       key: 'price',
@@ -72,6 +141,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       ),
       sortValue: (a) => a.price,
       align: 'right',
+      editable: true,
     },
     {
       key: 'area',
@@ -81,6 +151,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       renderCell: (a) => <span className="whitespace-nowrap">{a.area != null ? `${a.area} m²` : '—'}</span>,
       sortValue: (a) => a.area,
       align: 'right',
+      editable: true,
     },
     {
       key: 'price_per_m2',
@@ -100,6 +171,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       getValue: (a) => a.rooms,
       sortValue: (a) => a.rooms,
       align: 'center',
+      editable: true,
     },
     {
       key: 'bathrooms',
@@ -108,12 +180,14 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       getValue: (a) => a.bathrooms,
       sortValue: (a) => a.bathrooms,
       align: 'center',
+      editable: true,
     },
     {
       key: 'floor',
       label: 'Floor',
       width: 80,
       getValue: (a) => a.floor_en || a.floor || '',
+      editable: true,
     },
     {
       key: 'hausgeld',
@@ -125,12 +199,14 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       ),
       sortValue: (a) => a.hausgeld,
       align: 'right',
+      editable: true,
     },
     {
       key: 'district',
       label: 'District',
       width: 120,
       getValue: (a) => a.district_en || a.district || '',
+      editable: true,
     },
     {
       key: 'address',
@@ -142,6 +218,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
           {a.address || '—'}
         </span>
       ),
+      editable: true,
     },
     {
       key: 'hbf_transit_time',
@@ -195,6 +272,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
           </span>
         );
       },
+      editable: true,
     },
     {
       key: 'cons',
@@ -209,6 +287,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
           </span>
         );
       },
+      editable: true,
     },
     {
       key: 'rating',
@@ -231,6 +310,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       ),
       sortValue: (a) => a.preference_rating,
       align: 'center',
+      editable: true,
     },
     {
       key: 'favorites',
@@ -283,66 +363,77 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
       label: 'Type',
       width: 100,
       getValue: (a) => a.type_en || a.type || '',
+      editable: true,
     },
     {
       key: 'condition',
       label: 'Condition',
       width: 100,
       getValue: (a) => a.condition_en || a.condition || '',
+      editable: true,
     },
     {
       key: 'year_built',
       label: 'Year',
       width: 65,
       getValue: (a) => a.year_built_en || a.year_built || '',
+      editable: true,
     },
     {
       key: 'available_from',
       label: 'Available',
       width: 100,
       getValue: (a) => a.available_from_en || a.available_from || '',
+      editable: true,
     },
     {
       key: 'heating',
       label: 'Heating',
       width: 120,
       getValue: (a) => a.heating_en || a.heating || '',
+      editable: true,
     },
     {
       key: 'elevator',
       label: 'Elevator',
       width: 80,
       getValue: (a) => a.elevator_en || a.elevator || '',
+      editable: true,
     },
     {
       key: 'parking',
       label: 'Parking',
       width: 100,
       getValue: (a) => a.parking_en || a.parking || '',
+      editable: true,
     },
     {
       key: 'deposit',
       label: 'Deposit',
       width: 100,
       getValue: (a) => a.deposit_en || a.deposit || '',
+      editable: true,
     },
     {
       key: 'agency_fee',
       label: 'Agency Fee',
       width: 100,
       getValue: (a) => a.agency_fee_en || a.agency_fee || '',
+      editable: true,
     },
     {
       key: 'contact_name',
       label: 'Contact',
       width: 140,
       getValue: (a) => a.contact_name || '',
+      editable: true,
     },
     {
       key: 'contact_company',
       label: 'Company',
       width: 140,
       getValue: (a) => a.contact_company || '',
+      editable: true,
     },
     {
       key: 'user1_comment',
@@ -357,6 +448,7 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
           </span>
         );
       },
+      editable: true,
     },
     {
       key: 'user2_comment',
@@ -371,8 +463,37 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
           </span>
         );
       },
+      editable: true,
     },
-  ], [userName1, userName2]);
+    ...customColumns.map((cc): ColumnDef => ({
+      key: `custom_${cc.key}`,
+      label: cc.label,
+      width: cc.width || 120,
+      isCustom: true,
+      customColumn: cc,
+      editable: cc.type !== 'formula',
+      align: cc.type === 'number' || cc.type === 'formula' ? 'right' : 'left',
+      getValue: (a) => {
+        if (cc.type === 'formula' && cc.formula) {
+          const aptCells = spreadsheetCells[a.id] || {};
+          return evaluateFormula(cc.formula, a, aptCells);
+        }
+        const cellVal = spreadsheetCells[a.id]?.[cc.key];
+        return cellVal ?? null;
+      },
+      sortValue: (a) => {
+        if (cc.type === 'formula' && cc.formula) {
+          const aptCells = spreadsheetCells[a.id] || {};
+          const r = evaluateFormula(cc.formula, a, aptCells);
+          return typeof r === 'number' ? r : null;
+        }
+        const cellVal = spreadsheetCells[a.id]?.[cc.key];
+        if (cellVal == null) return null;
+        const n = Number(cellVal);
+        return isNaN(n) ? String(cellVal) : n;
+      },
+    })),
+  ], [userName1, userName2, customColumns, spreadsheetCells]);
 
   // Ordered columns based on saved order
   const orderedColumns = useMemo(() => {
@@ -501,7 +622,6 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
   // Scroll selected row into view when selection changes (e.g. from map marker click)
   useEffect(() => {
     if (selectedApartmentId && selectedApartmentId !== prevSelectedIdRef.current) {
-      // Small delay to ensure the DOM has updated with the new selection
       setTimeout(() => {
         if (selectedRowRef.current) {
           selectedRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -510,6 +630,129 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
     }
     prevSelectedIdRef.current = selectedApartmentId;
   }, [selectedApartmentId]);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingCell && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingCell]);
+
+  // Close color picker on outside click
+  useEffect(() => {
+    if (!colorPickerCell) return;
+    const handler = () => setColorPickerCell(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [colorPickerCell]);
+
+  // Start editing a cell
+  const startEditing = useCallback((aptId: string, colKey: string, currentValue: string | number | null) => {
+    setEditingCell({ aptId, colKey });
+    setEditValue(currentValue != null ? String(currentValue) : '');
+  }, []);
+
+  // Cancel editing
+  const cancelEditing = useCallback(() => {
+    setEditingCell(null);
+    setEditValue('');
+  }, []);
+
+  // Commit an edit: if it's an apartment field, update Supabase; if custom, update spreadsheet
+  const commitEdit = useCallback(async () => {
+    if (!editingCell) return;
+    const { aptId, colKey } = editingCell;
+    const trimmed = editValue.trim();
+
+    // Check if this is a custom column (key starts with "custom_")
+    if (colKey.startsWith('custom_')) {
+      const realKey = colKey.replace('custom_', '');
+      const cc = customColumns.find((c) => c.key === realKey);
+      let val: string | number | null = trimmed || null;
+      if (cc?.type === 'number' && trimmed) {
+        const num = parseFloat(trimmed);
+        val = isNaN(num) ? trimmed : num;
+      }
+      await updateSpreadsheetCell(aptId, realKey, val);
+    } else {
+      // It's an apartment field - update in Supabase
+      const aptField = APARTMENT_FIELD_MAP[colKey];
+      if (aptField) {
+        let parsedValue: string | number | null = trimmed || null;
+        if (NUMERIC_APT_FIELDS.has(colKey) && trimmed) {
+          const num = parseFloat(trimmed);
+          parsedValue = isNaN(num) ? null : num;
+        }
+        try {
+          await updateApartment(aptId, { [aptField]: parsedValue } as Partial<Apartment>);
+        } catch (err) {
+          console.error('Failed to update apartment field:', err);
+        }
+      }
+    }
+
+    setEditingCell(null);
+    setEditValue('');
+  }, [editingCell, editValue, customColumns, updateSpreadsheetCell, updateApartment]);
+
+  // Handle Tab key to move to the next editable cell
+  const handleEditKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditing();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      commitEdit();
+      // Move to next/prev editable cell in the same row
+      if (editingCell) {
+        const editableCols = orderedColumns.filter((c) => c.editable);
+        const curIdx = editableCols.findIndex((c) => c.key === editingCell.colKey);
+        const nextIdx = e.shiftKey ? curIdx - 1 : curIdx + 1;
+        if (nextIdx >= 0 && nextIdx < editableCols.length) {
+          const nextCol = editableCols[nextIdx];
+          const apt = sorted.find((a) => a.id === editingCell.aptId);
+          if (apt) {
+            const val = nextCol.getValue(apt);
+            startEditing(editingCell.aptId, nextCol.key, val);
+          }
+        }
+      }
+    }
+  }, [commitEdit, cancelEditing, editingCell, orderedColumns, sorted, startEditing]);
+
+  // Handle right-click for color picker
+  const handleCellContextMenu = useCallback((e: React.MouseEvent, aptId: string, colKey: string) => {
+    e.preventDefault();
+    setColorPickerCell({ aptId, colKey, x: e.clientX, y: e.clientY });
+  }, []);
+
+  // Color palette for cells
+  const CELL_COLORS = [
+    '#ffffff', '#fef3c7', '#dcfce7', '#dbeafe', '#fce7f3', '#fed7d7',
+    '#e9d5ff', '#cffafe', '#fef9c3', '#d1fae5', '#ede9fe', '#ffe4e6',
+  ];
+
+  // Handle adding a new custom column
+  const handleAddColumn = useCallback(async () => {
+    if (!newColLabel.trim()) return;
+    const key = newColLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    if (!key) return;
+    await addColumn({
+      key,
+      label: newColLabel.trim(),
+      type: newColType,
+      formula: newColType === 'formula' ? newColFormula : undefined,
+      width: 120,
+    });
+    setShowNewColumnDialog(false);
+    setNewColLabel('');
+    setNewColType('text');
+    setNewColFormula('');
+  }, [newColLabel, newColType, newColFormula, addColumn]);
 
   if (sorted.length === 0 && apartments.length === 0) {
     return (
@@ -525,16 +768,26 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
     <div className="flex flex-col h-full">
       <div className="text-xs text-muted-foreground px-2 py-1.5 border-b border-border bg-white shrink-0 flex items-center justify-between">
         <span>Showing {sorted.length} of {apartments.length} apartments</span>
-        <button
-          onClick={() => setShowColumnSettings(!showColumnSettings)}
-          className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
-            showColumnSettings ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-          }`}
-          title="Customize columns"
-        >
-          <Settings className="h-3 w-3" />
-          <span className="hidden sm:inline">Columns</span>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowNewColumnDialog(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded transition-colors hover:bg-muted text-muted-foreground hover:text-foreground"
+            title="Add custom column"
+          >
+            <Plus className="h-3 w-3" />
+            <span className="hidden sm:inline">Column</span>
+          </button>
+          <button
+            onClick={() => setShowColumnSettings(!showColumnSettings)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+              showColumnSettings ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+            title="Customize columns"
+          >
+            <Settings className="h-3 w-3" />
+            <span className="hidden sm:inline">Columns</span>
+          </button>
+        </div>
       </div>
 
       {/* Column settings panel */}
@@ -563,11 +816,22 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
                     ? 'opacity-50 border-primary bg-primary/10'
                     : dragOverCol === col.key
                     ? 'border-primary bg-primary/5'
+                    : col.isCustom
+                    ? 'border-purple-300 bg-purple-50 hover:border-purple-400'
                     : 'border-border bg-white hover:border-primary/50'
                 }`}
               >
                 <GripVertical className="h-3 w-3 text-muted-foreground" />
                 {col.label}
+                {col.isCustom && col.customColumn && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeColumn(col.customColumn!.key); }}
+                    className="ml-0.5 text-red-400 hover:text-red-600"
+                    title="Delete custom column"
+                  >
+                    <Trash2 className="h-2.5 w-2.5" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -632,23 +896,136 @@ export default function ApartmentTable({ apartments }: ApartmentTableProps) {
                   }`}
                   onClick={() => handleRowClick(apt)}
                 >
-                  {orderedColumns.map((col) => (
-                    <td
-                      key={col.key}
-                      className="border-b border-r border-border px-2 py-1.5"
-                      style={{ textAlign: col.align || 'left' }}
-                    >
-                      {col.renderCell
-                        ? col.renderCell(apt)
-                        : (col.getValue(apt) ?? '—')}
-                    </td>
-                  ))}
+                  {orderedColumns.map((col) => {
+                    const isEditing = editingCell?.aptId === apt.id && editingCell?.colKey === col.key;
+                    const colorKey = col.isCustom && col.customColumn ? col.customColumn.key : col.key;
+                    const bgColor = cellColors[apt.id]?.[colorKey];
+                    return (
+                      <td
+                        key={col.key}
+                        className={`border-b border-r border-border px-2 py-1.5 ${col.editable ? 'cursor-cell' : ''}`}
+                        style={{ textAlign: col.align || 'left', backgroundColor: bgColor || undefined }}
+                        onDoubleClick={(e) => {
+                          if (col.editable) {
+                            e.stopPropagation();
+                            startEditing(apt.id, col.key, col.getValue(apt));
+                          }
+                        }}
+                        onContextMenu={(e) => handleCellContextMenu(e, apt.id, colorKey)}
+                      >
+                        {isEditing ? (
+                          <input
+                            ref={editInputRef}
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleEditKeyDown}
+                            onBlur={commitEdit}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full bg-white border border-primary rounded px-1 py-0 text-xs outline-none ring-1 ring-primary/30"
+                            style={{ textAlign: col.align || 'left', minWidth: 40 }}
+                          />
+                        ) : col.renderCell ? (
+                          col.renderCell(apt)
+                        ) : (
+                          col.getValue(apt) ?? '—'
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {/* Color picker popup */}
+      {colorPickerCell && (
+        <div
+          className="fixed z-50 bg-white rounded-lg shadow-lg border border-border p-2"
+          style={{ left: colorPickerCell.x, top: colorPickerCell.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-[10px] font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+            <Palette className="h-3 w-3" /> Cell Color
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            {CELL_COLORS.map((color) => (
+              <button
+                key={color}
+                className={`w-5 h-5 rounded border ${color === '#ffffff' ? 'border-border' : 'border-transparent'} hover:ring-2 hover:ring-primary/40`}
+                style={{ backgroundColor: color }}
+                title={color === '#ffffff' ? 'No color' : color}
+                onClick={() => {
+                  setCellColor(colorPickerCell.aptId, colorPickerCell.colKey, color === '#ffffff' ? null : color);
+                  setColorPickerCell(null);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* New column dialog */}
+      {showNewColumnDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowNewColumnDialog(false)}>
+          <div className="bg-white rounded-lg shadow-xl border border-border p-4 w-80" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">Add Custom Column</h3>
+              <button onClick={() => setShowNewColumnDialog(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Column Name</label>
+                <input
+                  type="text"
+                  value={newColLabel}
+                  onChange={(e) => setNewColLabel(e.target.value)}
+                  placeholder="e.g. Monthly Cost"
+                  className="w-full mt-0.5 rounded border border-border px-2 py-1 text-xs outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Type</label>
+                <select
+                  value={newColType}
+                  onChange={(e) => setNewColType(e.target.value as 'text' | 'number' | 'formula')}
+                  className="w-full mt-0.5 rounded border border-border px-2 py-1 text-xs outline-none focus:border-primary bg-white"
+                >
+                  <option value="text">Text</option>
+                  <option value="number">Number</option>
+                  <option value="formula">Formula</option>
+                </select>
+              </div>
+              {newColType === 'formula' && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Formula</label>
+                  <input
+                    type="text"
+                    value={newColFormula}
+                    onChange={(e) => setNewColFormula(e.target.value)}
+                    placeholder="e.g. =price/area or =hausgeld*12"
+                    className="w-full mt-0.5 rounded border border-border px-2 py-1 text-xs outline-none focus:border-primary font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Use apartment fields: price, area, rooms, hausgeld, etc.
+                  </p>
+                </div>
+              )}
+              <button
+                onClick={handleAddColumn}
+                disabled={!newColLabel.trim()}
+                className="w-full mt-2 rounded bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add Column
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
